@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.14] - 2026-09-09
+
+### Installer
+
+- Carry app-packager 1.5.2.1; the other eleven components are unchanged.
+
 ## [0.4.13] - 2026-09-07
 
 ### Installer
