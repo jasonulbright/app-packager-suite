@@ -63,7 +63,25 @@ The workflow:
 5. Signs the installer with Azure Artifact Signing (`signalridgelabs` / `SRL-Public`) through the `release` environment's federated credential, then verifies the signature is valid, from `CN=Jason Ulbright`, and timestamped.
 6. Writes `checksums.txt` (`<sha256>  <name>`, two spaces) and creates a **draft** release titled with the tag, notes = headline + changelog entry + `Full changelog: CHANGELOG.md`.
 
-The `release` environment holds `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`. The Entra app's federated credential `suite-core-release-signer` trusts `repo:jasonulbright/suite-core:environment:release`.
+The `release` environment holds `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`. The Entra app's federated credential `suite-core-release-signer` must trust the subject GitHub sends for this repository:
+
+```
+repo:jasonulbright@263023789/suite-core@1334079327:environment:release
+```
+
+This repository sends GitHub's ID-based subject (`use_immutable_subject: true`), and GitHub does not switch it back to the name-based form. A credential holding `repo:jasonulbright/suite-core:environment:release` fails the Azure login with `AADSTS700213: No matching federated identity record found`. Read the subject GitHub sends with:
+
+```bash
+gh api repos/jasonulbright/suite-core/actions/oidc/customization/sub
+```
+
+The credential subject is `<sub_claim_prefix>:environment:release`.
+
+After the credential is fixed, re-run only the failed jobs; the build artifact is kept for 7 days:
+
+```bash
+gh run rerun <run id> -R jasonulbright/suite-core --failed
+```
 
 ## 4. Verify, then publish
 
