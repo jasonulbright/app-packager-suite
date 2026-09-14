@@ -1,0 +1,212 @@
+name: Signed release
+
+# Procedure: RELEASING.md. Builds the suite installer from the pushed suite-core
+# tag and every component's latest GitHub release, signs the installer, and
+# opens a draft release for review.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Pushed suite-core tag to release (for example v0.4.17)
+        required: true
+        type: string
+      suite_version:
+        description: Installer version, yyyy.MM.dd.N (for example 2026.09.14.2)
+        required: true
+        type: string
+      headline:
+        description: Release notes headline metric (for example 1 of 12 components refreshed)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signed-release-${{ github.event.inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.event.inputs.tag }}
+      SUITE_VERSION: ${{ github.event.inputs.suite_version }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Validate inputs
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+$') { throw 'tag must be vMAJOR.MINOR.PATCH' }
+          if ($env:SUITE_VERSION -notmatch '^\d{4}\.\d{2}\.\d{2}\.\d+$') { throw 'suite_version must be yyyy.MM.dd.N' }
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: refs/tags/${{ github.event.inputs.tag }}
+          path: suite-core
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Match tag to module version
+        id: version
+        shell: pwsh
+        run: |
+          $text = Get-Content suite-core/SuiteCommon/SuiteCommon.psd1 -Raw
+          if ($text -notmatch "ModuleVersion\s*=\s*'([^']+)'") { throw 'ModuleVersion not found' }
+          $version = $Matches[1]
+          if ($env:RELEASE_TAG -cne "v$version") { throw "Tag $env:RELEASE_TAG does not match ModuleVersion $version" }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      # The build script reads components from sibling folders; each one is
+      # cloned at its latest GitHub release so the release guard sees HEAD on
+      # that tag.
+      - name: Clone components at their latest release
+        shell: pwsh
+        run: |
+          $script = Get-Content suite-core/tools/build-suite-installer.ps1 -Raw
+          $repos = [regex]::Matches($script, "Repo\s*=\s*'([a-z0-9-]+)'") | ForEach-Object { $_.Groups[1].Value } |
+            Where-Object { $_ -ne 'suite-core' } | Select-Object -Unique
+          foreach ($repo in $repos) {
+            $tag = gh release view --repo "jasonulbright/$repo" --json tagName --jq .tagName
+            if ($LASTEXITCODE -ne 0 -or -not $tag) { throw "$repo has no GitHub release" }
+            git clone --quiet --depth 1 --branch $tag "https://github.com/jasonulbright/$repo.git" $repo
+            if ($LASTEXITCODE -ne 0) { throw "clone failed for $repo at $tag" }
+            Write-Host "$repo at $tag"
+          }
+
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          $makensis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          if (-not (Test-Path -LiteralPath $makensis)) {
+            choco install nsis --no-progress -y
+            if ($LASTEXITCODE -ne 0) { throw "choco install nsis failed with exit code $LASTEXITCODE" }
+          }
+          & $makensis /VERSION
+          $global:LASTEXITCODE = 0
+
+      - name: Build the installer
+        shell: powershell
+        run: |
+          & .\suite-core\tools\build-suite-installer.ps1 -SuiteVersion $env:SUITE_VERSION -AllowUnpublished suite-core
+          if (-not $?) { throw 'build-suite-installer.ps1 failed' }
+
+      - name: Build the module zip
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          New-Item -ItemType Directory -Path release -Force | Out-Null
+          git -C suite-core archive --format=zip $env:RELEASE_TAG -o "$PWD/release/SuiteCore-$version.zip" -- . ':(exclude)Tests' ':(exclude)*.Tests.ps1' ':(exclude).github' ':(exclude)RELEASING.md'
+          if ($LASTEXITCODE -ne 0) { throw 'git archive failed' }
+          Copy-Item "suite-core/installer/out/SuiteSetup-$env:SUITE_VERSION.exe" release/
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: unsigned-release
+          path: release/
+          if-no-files-found: error
+          retention-days: 7
+
+  sign:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      SUITE_VERSION: ${{ github.event.inputs.suite_version }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: unsigned-release
+          path: release
+
+      - name: Azure login using the release environment federation
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign the installer
+        uses: azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2
+        with:
+          endpoint: https://eus.codesigning.azure.net/
+          signing-account-name: signalridgelabs
+          certificate-profile-name: SRL-Public
+          files: ${{ github.workspace }}\release\SuiteSetup-${{ github.event.inputs.suite_version }}.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          exclude-environment-credential: true
+          exclude-managed-identity-credential: true
+          exclude-workload-identity-credential: true
+          exclude-azure-cli-credential: false
+
+      - name: Verify the signature and write checksums
+        shell: pwsh
+        run: |
+          $exe = "release/SuiteSetup-$env:SUITE_VERSION.exe"
+          $sig = Get-AuthenticodeSignature -LiteralPath $exe
+          if ([string]$sig.Status -ne 'Valid') { throw "installer signature is $($sig.Status): $($sig.StatusMessage)" }
+          $cn = $sig.SignerCertificate.GetNameInfo([System.Security.Cryptography.X509Certificates.X509NameType]::SimpleName, $false)
+          if ($cn -ne 'Jason Ulbright') { throw "installer signed by '$cn'" }
+          if (-not $sig.TimeStamperCertificate) { throw 'installer signature is not timestamped' }
+          Write-Host "signature ok: CN=$cn, timestamped by $($sig.TimeStamperCertificate.Subject)"
+          Push-Location release
+          $lines = Get-ChildItem -File | Where-Object { $_.Name -ne 'checksums.txt' } | Sort-Object Name | ForEach-Object {
+            (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant() + '  ' + $_.Name
+          }
+          [IO.File]::WriteAllText("$PWD/checksums.txt", (($lines -join "`n") + "`n"))
+          Get-Content checksums.txt
+          Pop-Location
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: signed-release
+          path: release/
+          if-no-files-found: error
+          retention-days: 30
+
+  draft:
+    needs: [build, sign]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: refs/tags/${{ github.event.inputs.tag }}
+          persist-credentials: false
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: signed-release
+          path: release
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.inputs.tag }}
+          VERSION: ${{ needs.build.outputs.version }}
+          HEADLINE: ${{ github.event.inputs.headline }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          section=$(awk -v v="## [$VERSION]" 'index($0, v) == 1 { on = 1; next } on && /^## \[/ { exit } on { print }' CHANGELOG.md | tr -d '\r')
+          test -n "$(printf '%s' "$section" | tr -d '[:space:]')" || { echo "CHANGELOG.md has no entry for $VERSION"; exit 1; }
+          printf '## %s\n%s\nFull changelog: CHANGELOG.md\n' "$HEADLINE" "$section" > notes.md
+          cat notes.md
+          if gh release view "$RELEASE_TAG" --json isDraft >/dev/null 2>&1; then
+            test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+            gh release upload "$RELEASE_TAG" release/* --clobber
+          else
+            gh release create "$RELEASE_TAG" release/* --verify-tag --draft --title "$RELEASE_TAG" --notes-file notes.md
+          fi
