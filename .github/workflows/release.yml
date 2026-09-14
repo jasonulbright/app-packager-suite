@@ -93,8 +93,12 @@ jobs:
       - name: Exclude build output from the suite-core checkout
         shell: pwsh
         run: |
-          Add-Content -LiteralPath suite-core/.git/info/exclude -Value @('installer/out/', 'installer/stage/')
-          $status = git -C suite-core status --porcelain
+          $exclude = 'suite-core/.git/info/exclude'
+          [IO.File]::AppendAllText($exclude, "`ninstaller/out/`ninstaller/stage/`n")
+          New-Item -ItemType Directory -Path suite-core/installer/out, suite-core/installer/stage -Force | Out-Null
+          Set-Content -LiteralPath suite-core/installer/out/probe.txt, suite-core/installer/stage/probe.txt -Value probe
+          $status = git -C suite-core status --porcelain --untracked-files=all
+          Remove-Item -LiteralPath suite-core/installer/out/probe.txt, suite-core/installer/stage/probe.txt -Force
           if ($status) { throw "suite-core checkout is not clean:`n$($status -join "`n")" }
 
       - name: Build the installer
@@ -102,6 +106,13 @@ jobs:
         run: |
           & .\suite-core\tools\build-suite-installer.ps1 -SuiteVersion $env:SUITE_VERSION -AllowUnpublished suite-core
           if (-not $?) { throw 'build-suite-installer.ps1 failed' }
+
+      - name: Show untracked files after a failed build
+        if: failure()
+        shell: pwsh
+        run: |
+          git -C suite-core status --porcelain --untracked-files=all --ignored
+          Get-Content suite-core/.git/info/exclude
 
       - name: Build the module zip
         shell: pwsh
