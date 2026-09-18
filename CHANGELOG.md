@@ -1,5 +1,16 @@
 # Changelog
 
+## [2026.09.18.0030] - 2026-09-18
+
+### Changed
+
+- Install the launcher to the app-packager-suite folder instead of suite-core.
+- Move launcher settings and window state to the new folder on upgrade.
+
+### Installer
+
+- Ask to close running suite tools when the old launcher folder is in use.
+
 ## [2026.09.18.0029] - 2026-09-18
 
 ### Changed

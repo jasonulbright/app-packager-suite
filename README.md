@@ -56,7 +56,7 @@ and `SuiteCommon`). Twelve components ship:
 
 | Component | Folder | Entry script |
 | --- | --- | --- |
-| AppPackager Suite Launcher | `suite-core\` | `start-suite.ps1` |
+| AppPackager Suite Launcher | `app-packager-suite\` | `start-suite.ps1` |
 | App Packager | `app-packager\` | `start-apppackager.ps1` |
 | Site Hygiene | `site-hygiene\` | `start-sitehygiene.ps1` |
 | Collection and Compliance Manager | `collection-and-compliance-manager\` | `start-ccm.ps1` |
