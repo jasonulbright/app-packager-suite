@@ -68,7 +68,7 @@ $SiblingRoot  = Split-Path -Parent $RepoRoot
 # Version line trails the CHANGELOG in most tool repositories, so only the
 # repositories whose header is maintained use ScriptHeader.
 $Components = @(
-    [pscustomobject]@{ Folder = 'suite-core';   Repo = 'suite-core';   Entry = 'start-suite.ps1';                  Shortcut = 'AppPackager Suite Launcher';      VersionSource = 'ModuleManifest'; VersionFile = 'SuiteCommon\SuiteCommon.psd1' }
+    [pscustomobject]@{ Folder = 'suite-core';   Repo = 'app-packager-suite'; Entry = 'start-suite.ps1';                  Shortcut = 'AppPackager Suite Launcher';      VersionSource = 'ModuleManifest'; VersionFile = 'SuiteCommon\SuiteCommon.psd1' }
     [pscustomobject]@{ Folder = 'app-packager'; Repo = 'app-packager'; Entry = 'start-apppackager.ps1';            Shortcut = 'App Packager';                    VersionSource = 'ScriptHeader';   VersionFile = '' }
     [pscustomobject]@{ Folder = 'site-hygiene'; Repo = 'site-hygiene'; Entry = 'start-sitehygiene.ps1';            Shortcut = 'Site Hygiene';                    VersionSource = 'Changelog';      VersionFile = 'CHANGELOG.md' }
     [pscustomobject]@{ Folder = 'collection-and-compliance-manager'; Repo = 'collection-and-compliance-manager'; Entry = 'start-ccm.ps1';                  Shortcut = 'Collection and Compliance Manager'; VersionSource = 'Changelog'; VersionFile = 'CHANGELOG.md' }
@@ -317,7 +317,7 @@ if (-not (Test-Path -LiteralPath $NsiPath)) {
 }
 
 foreach ($component in $Components) {
-    $repoPath = if ($component.Repo -eq 'suite-core') { $RepoRoot } else { Join-Path $SiblingRoot $component.Repo }
+    $repoPath = if ($component.Repo -eq 'app-packager-suite') { $RepoRoot } else { Join-Path $SiblingRoot $component.Repo }
     Add-Member -InputObject $component -NotePropertyName 'RepoPath' -NotePropertyValue $repoPath -Force
     if (-not (Test-Path -LiteralPath $repoPath)) {
         throw ('Component repository missing: ' + $repoPath)

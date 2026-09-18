@@ -1,5 +1,17 @@
 # Changelog
 
+## [2026.09.18.0029] - 2026-09-18
+
+### Changed
+
+- Rename the repository to app-packager-suite.
+- Use date versions; the installer and the module share one version.
+- Rename the module zip to AppPackagerSuite-<version>.zip.
+
+### Installer
+
+- Carry app-packager 2026.09.18.0090 and site-hygiene 2026.09.18.0014; the other ten components are unchanged.
+
 ## [0.5.5] - 2026-09-18
 
 ### Installer

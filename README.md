@@ -1,9 +1,9 @@
-# Suite Core
+# AppPackager Suite
 
-[![Latest release](https://img.shields.io/github/v/release/jasonulbright/suite-core?label=release)](https://github.com/jasonulbright/suite-core/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/jasonulbright/suite-core/total?label=downloads)](https://github.com/jasonulbright/suite-core/releases)
+[![Latest release](https://img.shields.io/github/v/release/jasonulbright/app-packager-suite?label=release)](https://github.com/jasonulbright/app-packager-suite/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/jasonulbright/app-packager-suite/total?label=downloads)](https://github.com/jasonulbright/app-packager-suite/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D4)](#requirements)
-[![License](https://img.shields.io/github/license/jasonulbright/suite-core)](LICENSE)
+[![License](https://img.shields.io/github/license/jasonulbright/app-packager-suite)](LICENSE)
 
 Shared core module (`SuiteCommon`) for a family of MECM (Configuration
 Manager) admin tools. Each consumer tool carries a vendored copy at
