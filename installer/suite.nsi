@@ -75,6 +75,7 @@ Section "Suite" SecSuite
   SetOutPath "$INSTDIR"
   File "${PAYLOADDIR}\suite-manifest.json"
 
+  !insertmacro SUITE_MIGRATE_FOLDERS
   !insertmacro SUITE_INSTALL_FILES
 
   CreateDirectory "$StartMenuDir"
