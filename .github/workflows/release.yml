@@ -1,17 +1,13 @@
 name: Signed release
 
-# Procedure: RELEASING.md. Builds the suite installer from the pushed suite-core
-# tag and every component's latest GitHub release, signs the installer, and
-# opens a draft release for review.
+# Procedure: RELEASING.md. Builds the suite installer from the pushed tag and
+# every component's latest GitHub release, signs the installer, and opens a
+# draft release for review. The tag version is also the installer version.
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Pushed suite-core tag to release (for example v0.4.17)
-        required: true
-        type: string
-      suite_version:
-        description: Installer version, yyyy.MM.dd.N (for example 2026.09.14.2)
+        description: Pushed tag to release, vYYYY.MM.DD.BBBB (for example v2026.09.18.0029)
         required: true
         type: string
       headline:
@@ -33,20 +29,18 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: ${{ github.event.inputs.tag }}
-      SUITE_VERSION: ${{ github.event.inputs.suite_version }}
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - name: Validate inputs
         shell: pwsh
         run: |
-          if ($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+$') { throw 'tag must be vMAJOR.MINOR.PATCH' }
-          if ($env:SUITE_VERSION -notmatch '^\d{4}\.\d{2}\.\d{2}\.\d+$') { throw 'suite_version must be yyyy.MM.dd.N' }
+          if ($env:RELEASE_TAG -notmatch '^v\d{4}\.\d{2}\.\d{2}\.\d{4}$') { throw 'tag must be vYYYY.MM.DD.BBBB' }
 
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: refs/tags/${{ github.event.inputs.tag }}
-          path: suite-core
+          path: app-packager-suite
           fetch-depth: 0
           persist-credentials: false
 
@@ -54,11 +48,12 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          $text = Get-Content suite-core/SuiteCommon/SuiteCommon.psd1 -Raw
+          $text = Get-Content app-packager-suite/SuiteCommon/SuiteCommon.psd1 -Raw
           if ($text -notmatch "ModuleVersion\s*=\s*'([^']+)'") { throw 'ModuleVersion not found' }
           $version = $Matches[1]
           if ($env:RELEASE_TAG -cne "v$version") { throw "Tag $env:RELEASE_TAG does not match ModuleVersion $version" }
           "version=$version" >> $env:GITHUB_OUTPUT
+          "SUITE_VERSION=$version" >> $env:GITHUB_ENV
 
       # The build script reads components from sibling folders; each one is
       # cloned at its latest GitHub release so the release guard sees HEAD on
@@ -66,9 +61,9 @@ jobs:
       - name: Clone components at their latest release
         shell: pwsh
         run: |
-          $script = Get-Content suite-core/tools/build-suite-installer.ps1 -Raw
+          $script = Get-Content app-packager-suite/tools/build-suite-installer.ps1 -Raw
           $repos = [regex]::Matches($script, "Repo\s*=\s*'([a-z0-9-]+)'") | ForEach-Object { $_.Groups[1].Value } |
-            Where-Object { $_ -ne 'suite-core' } | Select-Object -Unique
+            Where-Object { $_ -ne 'app-packager-suite' } | Select-Object -Unique
           foreach ($repo in $repos) {
             $tag = gh release view --repo "jasonulbright/$repo" --json tagName --jq .tagName
             if ($LASTEXITCODE -ne 0 -or -not $tag) { throw "$repo has no GitHub release" }
@@ -90,38 +85,38 @@ jobs:
 
       # The build writes installer/stage and installer/out inside the checkout,
       # and the release guard refuses a checkout with untracked files.
-      - name: Exclude build output from the suite-core checkout
+      - name: Exclude build output from the app-packager-suite checkout
         shell: pwsh
         run: |
-          $exclude = 'suite-core/.git/info/exclude'
+          $exclude = 'app-packager-suite/.git/info/exclude'
           [IO.File]::AppendAllText($exclude, "`ninstaller/out/`ninstaller/stage/`n")
-          New-Item -ItemType Directory -Path suite-core/installer/out, suite-core/installer/stage -Force | Out-Null
-          Set-Content -LiteralPath suite-core/installer/out/probe.txt, suite-core/installer/stage/probe.txt -Value probe
-          $status = git -C suite-core status --porcelain --untracked-files=all
-          Remove-Item -LiteralPath suite-core/installer/out/probe.txt, suite-core/installer/stage/probe.txt -Force
-          if ($status) { throw "suite-core checkout is not clean:`n$($status -join "`n")" }
+          New-Item -ItemType Directory -Path app-packager-suite/installer/out, app-packager-suite/installer/stage -Force | Out-Null
+          Set-Content -LiteralPath app-packager-suite/installer/out/probe.txt, app-packager-suite/installer/stage/probe.txt -Value probe
+          $status = git -C app-packager-suite status --porcelain --untracked-files=all
+          Remove-Item -LiteralPath app-packager-suite/installer/out/probe.txt, app-packager-suite/installer/stage/probe.txt -Force
+          if ($status) { throw "app-packager-suite checkout is not clean:`n$($status -join "`n")" }
 
       - name: Build the installer
         shell: powershell
         run: |
-          & .\suite-core\tools\build-suite-installer.ps1 -SuiteVersion $env:SUITE_VERSION -AllowUnpublished suite-core
+          & .\app-packager-suite\tools\build-suite-installer.ps1 -SuiteVersion $env:SUITE_VERSION -AllowUnpublished app-packager-suite
           if (-not $?) { throw 'build-suite-installer.ps1 failed' }
 
       - name: Show untracked files after a failed build
         if: failure()
         shell: pwsh
         run: |
-          git -C suite-core status --porcelain --untracked-files=all --ignored
-          Get-Content suite-core/.git/info/exclude
+          git -C app-packager-suite status --porcelain --untracked-files=all --ignored
+          Get-Content app-packager-suite/.git/info/exclude
 
       - name: Build the module zip
         shell: pwsh
         run: |
           $version = '${{ steps.version.outputs.version }}'
           New-Item -ItemType Directory -Path release -Force | Out-Null
-          git -C suite-core archive --format=zip $env:RELEASE_TAG -o "$PWD/release/SuiteCore-$version.zip" -- . ':(exclude)Tests' ':(exclude)*.Tests.ps1' ':(exclude).github' ':(exclude)RELEASING.md'
+          git -C app-packager-suite archive --format=zip $env:RELEASE_TAG -o "$PWD/release/AppPackagerSuite-$version.zip" -- . ':(exclude)Tests' ':(exclude)*.Tests.ps1' ':(exclude).github' ':(exclude)RELEASING.md'
           if ($LASTEXITCODE -ne 0) { throw 'git archive failed' }
-          Copy-Item "suite-core/installer/out/SuiteSetup-$env:SUITE_VERSION.exe" release/
+          Copy-Item "app-packager-suite/installer/out/SuiteSetup-$env:SUITE_VERSION.exe" release/
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -139,7 +134,7 @@ jobs:
       contents: read
       id-token: write
     env:
-      SUITE_VERSION: ${{ github.event.inputs.suite_version }}
+      SUITE_VERSION: ${{ needs.build.outputs.version }}
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -159,7 +154,7 @@ jobs:
           endpoint: https://eus.codesigning.azure.net/
           signing-account-name: signalridgelabs
           certificate-profile-name: SRL-Public
-          files: ${{ github.workspace }}\release\SuiteSetup-${{ github.event.inputs.suite_version }}.exe
+          files: ${{ github.workspace }}\release\SuiteSetup-${{ needs.build.outputs.version }}.exe
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
