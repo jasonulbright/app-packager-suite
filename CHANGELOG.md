@@ -8,6 +8,10 @@
 - Name the launcher window AppPackager Suite.
 - Rename the Start Menu shortcut MECM Health Dashboard to ConfigMgr Health Dashboard.
 
+### Installer
+
+- Carry new releases of all eleven components; each one uses a date version.
+
 ## [2026.09.18.0030] - 2026-09-18
 
 ### Changed
