@@ -11,6 +11,7 @@
 ### Installer
 
 - Carry new releases of all eleven components; each one uses a date version.
+- Leave each component's release procedure file out of the installer.
 
 ## [2026.09.18.0030] - 2026-09-18
 

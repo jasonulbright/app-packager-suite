@@ -13,7 +13,8 @@
     payload File blocks and the start-menu shortcuts all read that row.
 
     Test files are stripped from the payload: nothing under a Tests folder and
-    no *.Tests.ps1 file reaches a shipped artifact.
+    no *.Tests.ps1 file reaches a shipped artifact. Each component's
+    RELEASING.md is stripped too.
 
 .PARAMETER SuiteVersion
     Suite version stamped into the installer, the manifest and the file name.
@@ -178,6 +179,13 @@ function Remove-TestArtifact {
     }
     foreach ($file in @(Get-ChildItem -LiteralPath $Root -Recurse -File -Filter '*.Tests.ps1' -ErrorAction SilentlyContinue)) {
         Remove-Item -LiteralPath $file.FullName -Force
+        $removed++
+    }
+    # The release procedure is a maintainer file; each component's own zip
+    # excludes it, so the installer payload does too.
+    $releasing = Join-Path $Root 'RELEASING.md'
+    if (Test-Path -LiteralPath $releasing) {
+        Remove-Item -LiteralPath $releasing -Force
         $removed++
     }
     return $removed
@@ -388,7 +396,7 @@ foreach ($component in $Components) {
     Export-RepoHead -RepoPath $component.RepoPath -Destination $dest
 
     $stripped = Remove-TestArtifact -Root $dest
-    if ($stripped -gt 0) { Write-Step ('  removed ' + $stripped + ' test file(s) from the payload') }
+    if ($stripped -gt 0) { Write-Step ('  removed ' + $stripped + ' test and maintainer file(s) from the payload') }
 
     $entryPath = Join-Path $dest $component.Entry
     if (-not (Test-Path -LiteralPath $entryPath)) {
