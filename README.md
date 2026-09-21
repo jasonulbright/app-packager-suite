@@ -5,8 +5,8 @@
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D4)](#requirements)
 [![License](https://img.shields.io/github/license/jasonulbright/app-packager-suite)](LICENSE)
 
-Shared core module (`SuiteCommon`) for a family of MECM (Configuration
-Manager) admin tools. Each consumer tool carries a vendored copy at
+Shared core module (`SuiteCommon`) for a family of Configuration
+Manager admin tools. Each consumer tool carries a vendored copy at
 `Lib\SuiteCommon\` so every tool stays fully standalone — no module
 installation, no gallery dependency.
 
@@ -66,7 +66,7 @@ and `SuiteCommon`). Twelve components ship:
 | DP Content Manager | `dp-content-manager\` | `start-dpcontentmgr.ps1` |
 | Installer Analysis | `installer-analysis\` | `start-installeranalysis.ps1` |
 | Maintenance Window Manager | `maintenance-window-manager\` | `start-maintenancewindowmgr.ps1` |
-| MECM Health Dashboard | `mecm-health-dashboard\` | `start-mecmhealthdashboard.ps1` |
+| ConfigMgr Health Dashboard | `mecm-health-dashboard\` | `start-mecmhealthdashboard.ps1` |
 | Supersedence and Dependency Auditor | `supersedence-auditor\` | `start-supersedenceauditor.ps1` |
 
 The component list lives in one table in

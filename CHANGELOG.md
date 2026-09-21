@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026.09.21.0031] - 2026-09-21
+
+### Changed
+
+- Use the product name Configuration Manager in the launcher, the shared module and the README.
+- Name the launcher window AppPackager Suite.
+- Rename the Start Menu shortcut MECM Health Dashboard to ConfigMgr Health Dashboard.
+
 ## [2026.09.18.0030] - 2026-09-18
 
 ### Changed

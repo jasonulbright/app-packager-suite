@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Shared core module for the MECM tool suite.
+    Shared core module for the Configuration Manager tool suite.
 
 .DESCRIPTION
     Vendored into each consumer tool at Lib\SuiteCommon\ by
