@@ -6,7 +6,7 @@
 
 .DESCRIPTION
     Covers logging, settings persistence, and the CM connection functions
-    with mocked CM cmdlets. No MECM site, network, or elevation required.
+    with mocked CM cmdlets. No Configuration Manager site, network, or elevation required.
 
 .EXAMPLE
     Invoke-Pester .\SuiteCommon.Tests.ps1

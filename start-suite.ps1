@@ -1,4 +1,4 @@
-# MECM Suite launcher: tool tiles + shared connection profile.
+# AppPackager Suite launcher: tool tiles + shared connection profile.
 # Thin by design -- every tool launches as its own process; the only state
 # handed across is the connection profile via environment variables
 # (SUITE_CM_PROVIDER is a Connect-CMSite fallback; SUITE_CM_SITECODE is
@@ -102,7 +102,7 @@ $mainXaml = @'
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
-    Title="MECM Suite" Width="760" Height="560" MinWidth="620" MinHeight="420"
+    Title="AppPackager Suite" Width="760" Height="560" MinWidth="620" MinHeight="420"
     TitleCharacterCasing="Normal" ShowIconOnTitleBar="False"
     GlowBrush="{DynamicResource MahApps.Brushes.Accent}"
     BorderThickness="1" WindowStartupLocation="CenterScreen">
