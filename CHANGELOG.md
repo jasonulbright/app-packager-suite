@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026.09.21.0032] - 2026-09-21
+
+### Fixed
+
+- Use the launcher site code and provider in every tool that has none saved.
+
+### Installer
+
+- Carry new releases of all eleven components.
+
 ## [2026.09.21.0031] - 2026-09-21
 
 ### Changed
