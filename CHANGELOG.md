@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026.09.25.0034] - 2026-09-25
+
+## 1 of 10 components refreshed
+
+### Installer
+
+- Carry app-packager 2026.09.25.0094; the other nine components are unchanged.
+
 ## [2026.09.25.0033] - 2026-09-25
 
 ## Two components fold into Site Hygiene: 10 components ship instead of 12
