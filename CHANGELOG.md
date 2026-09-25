@@ -1,5 +1,25 @@
 # Changelog
 
+## [2026.09.25.0033] - 2026-09-25
+
+## Two components fold into Site Hygiene: 10 components ship instead of 12
+
+### Installer
+
+- Remove ConfigMgr Health Dashboard and Supersedence and Dependency Auditor; Site Hygiene carries their features.
+- Zip each retired component's folder under site-hygiene\legacy on upgrade, then remove the folder.
+- Keep a retired component's json files, history, logs, and reports under site-hygiene\legacy.
+- Delete the retired components' Start Menu shortcuts on upgrade.
+- Carry site-hygiene 2026.09.25.0020, deployment-helper 2026.09.25.0009, and app-packager 2026.09.25.0093.
+
+### Launcher
+
+- Drop the Health Dashboard tile.
+
+### Tests
+
+- Add an installer upgrade test that runs a fixture installer over a retired layout.
+
 ## [2026.09.21.0032] - 2026-09-21
 
 ### Fixed

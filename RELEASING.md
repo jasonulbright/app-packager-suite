@@ -1,12 +1,12 @@
 # Releasing AppPackager Suite
 
-A release ships two assets built from twelve repositories: the signed `SuiteSetup-<version>.exe` installer and the `AppPackagerSuite-<version>.zip` module zip, plus `checksums.txt`. The installer is built and signed by `.github/workflows/release.yml`. Never publish an installer built on a workstation: it is unsigned.
+A release ships two assets built from ten repositories: the signed `SuiteSetup-<version>.exe` installer and the `AppPackagerSuite-<version>.zip` module zip, plus `checksums.txt`. The installer is built and signed by `.github/workflows/release.yml`. Never publish an installer built on a workstation: it is unsigned.
 
 This file is excluded from the module zip and the installer payload is built from the release tag.
 
 ## 1. Every component must already be released
 
-The installer carries eleven component repositories plus this repository. For each component, the latest GitHub release must be the commit you want to ship. The build refuses anything else.
+The installer carries nine component repositories plus this repository. For each component, the latest GitHub release must be the commit you want to ship. The build refuses anything else.
 
 Release a component first (its own procedure, for example `app-packager/RELEASING.md`) when it has commits or changes that belong in the suite.
 
@@ -50,7 +50,7 @@ git push origin main v<version>
 
 ```bash
 gh workflow run release.yml -R jasonulbright/app-packager-suite --ref main \
-  -f tag=v<version> -f headline="<N> of 12 components refreshed"
+  -f tag=v<version> -f headline="<N> of 10 components refreshed"
 gh run watch -R jasonulbright/app-packager-suite $(gh run list -R jasonulbright/app-packager-suite --workflow release.yml -L 1 --json databaseId --jq '.[0].databaseId')
 ```
 

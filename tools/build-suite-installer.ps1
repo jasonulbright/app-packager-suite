@@ -79,8 +79,6 @@ $Components = @(
     [pscustomobject]@{ Folder = 'dp-content-manager';               Repo = 'dp-content-manager';                Entry = 'start-dpcontentmgr.ps1';         Shortcut = 'DP Content Manager';                VersionSource = 'Changelog'; VersionFile = 'CHANGELOG.md' }
     [pscustomobject]@{ Folder = 'installer-analysis';               Repo = 'installer-analysis';                Entry = 'start-installeranalysis.ps1';    Shortcut = 'Installer Analysis';                VersionSource = 'Changelog'; VersionFile = 'CHANGELOG.md' }
     [pscustomobject]@{ Folder = 'maintenance-window-manager';       Repo = 'maintenance-window-manager';        Entry = 'start-maintenancewindowmgr.ps1'; Shortcut = 'Maintenance Window Manager';        VersionSource = 'Changelog'; VersionFile = 'CHANGELOG.md' }
-    [pscustomobject]@{ Folder = 'mecm-health-dashboard';            Repo = 'mecm-health-dashboard';             Entry = 'start-mecmhealthdashboard.ps1';  Shortcut = 'ConfigMgr Health Dashboard';        VersionSource = 'Changelog'; VersionFile = 'CHANGELOG.md' }
-    [pscustomobject]@{ Folder = 'supersedence-auditor';             Repo = 'supersedence-auditor';              Entry = 'start-supersedenceauditor.ps1';  Shortcut = 'Supersedence and Dependency Auditor'; VersionSource = 'Changelog'; VersionFile = 'CHANGELOG.md' }
 )
 
 # Install-root subfolders that changed name. An upgrade moves the old folder,
@@ -89,10 +87,23 @@ $FolderRenames = @(
     [pscustomobject]@{ From = 'suite-core'; To = 'app-packager-suite' }
 )
 
-# Start Menu shortcut names that changed. Setup and uninstall delete the old
-# name; without this an upgrade leaves both shortcuts.
+# Components an earlier installer shipped that no longer exist. An upgrade
+# zips the whole old folder to <MigrateTo>\legacy\<Folder>.zip through
+# powershell.exe, moves every *.json file and each UserFolder into
+# <MigrateTo>\legacy\<Folder>\, and then removes the old folder. The
+# removal runs only after the zip succeeds, so nothing is lost when the
+# archive cannot be written.
+$RetiredComponents = @(
+    [pscustomobject]@{ Folder = 'mecm-health-dashboard'; MigrateTo = 'site-hygiene'; UserFolders = @('History', 'Logs', 'Reports') }
+    [pscustomobject]@{ Folder = 'supersedence-auditor';  MigrateTo = 'site-hygiene'; UserFolders = @('Logs', 'Reports') }
+)
+
+# Start Menu shortcut names that changed or belong to a retired component.
+# Setup and uninstall delete them; without this an upgrade leaves them.
 $RetiredShortcuts = @(
     'MECM Health Dashboard'
+    'ConfigMgr Health Dashboard'
+    'Supersedence and Dependency Auditor'
 )
 
 function Write-Step {
@@ -275,6 +286,7 @@ function Write-ComponentsInclude {
         [Parameter(Mandatory)][object[]]$Table,
         [Parameter(Mandatory)][string]$Path,
         [object[]]$Renames = @(),
+        [object[]]$Retired = @(),
         [string[]]$RetiredShortcuts = @()
     )
     $lines = New-Object System.Collections.Generic.List[string]
@@ -308,6 +320,53 @@ function Write-ComponentsInclude {
         $lines.Add('  FindClose $0')
         $lines.Add('  RMDir /r "' + $from + '"')
         $lines.Add('  migrate_done_' + $n + ':')
+        $n++
+    }
+    $lines.Add('!macroend')
+    $lines.Add('')
+    # The paths reach PowerShell through environment variables, so a quote
+    # or an apostrophe in the install path never breaks the command line.
+    # A user item moves only when the legacy copy does not exist yet, so a
+    # second upgrade over a half-migrated folder never overwrites data.
+    # A failed zip (non-zero exit) leaves the old folder in place.
+    $lines.Add('!macro SUITE_RETIRE_COMPONENTS')
+    $n = 0
+    foreach ($r in $Retired) {
+        $old = '$INSTDIR\' + $r.Folder
+        $legacyRoot = '$INSTDIR\' + $r.MigrateTo + '\legacy'
+        $legacy = $legacyRoot + '\' + $r.Folder
+        $lines.Add('  IfFileExists "' + $old + '\*.*" 0 retire_done_' + $n)
+        $lines.Add('  CreateDirectory "' + $legacy + '"')
+        $lines.Add('  System::Call ' + "'" + 'kernel32::SetEnvironmentVariable(t "SUITE_RETIRE_SRC", t "' + $old + '")' + "'")
+        $lines.Add('  System::Call ' + "'" + 'kernel32::SetEnvironmentVariable(t "SUITE_RETIRE_ZIP", t "' + $legacyRoot + '\' + $r.Folder + '.zip")' + "'")
+        $lines.Add('  DetailPrint "Archiving ' + $r.Folder + ' to ' + $legacyRoot + '\' + $r.Folder + '.zip"')
+        $lines.Add('  ExecWait ' + "'" + '"$PSExe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "Compress-Archive -LiteralPath $env:SUITE_RETIRE_SRC -DestinationPath $env:SUITE_RETIRE_ZIP -Force -ErrorAction Stop"' + "' " + '$0')
+        $lines.Add('  StrCmp $0 0 0 retire_failed_' + $n)
+        # *.json files, one by one: preferences, window state, anything else the tool wrote.
+        $lines.Add('  FindFirst $1 $2 "' + $old + '\*.json"')
+        $lines.Add('  retire_json_' + $n + ':')
+        $lines.Add('  StrCmp $2 "" retire_jsondone_' + $n)
+        $lines.Add('  IfFileExists "' + $legacy + '\$2" +2')
+        $lines.Add('  Rename "' + $old + '\$2" "' + $legacy + '\$2"')
+        $lines.Add('  FindNext $1 $2')
+        $lines.Add('  Goto retire_json_' + $n)
+        $lines.Add('  retire_jsondone_' + $n + ':')
+        $lines.Add('  FindClose $1')
+        $m = 0
+        foreach ($item in @($r.UserFolders)) {
+            $src = $old + '\' + $item
+            $dst = $legacy + '\' + $item
+            $lines.Add('  IfFileExists "' + $src + '\*.*" 0 retire_next_' + $n + '_' + $m)
+            $lines.Add('  IfFileExists "' + $dst + '\*.*" retire_next_' + $n + '_' + $m)
+            $lines.Add('  Rename "' + $src + '" "' + $dst + '"')
+            $lines.Add('  retire_next_' + $n + '_' + $m + ':')
+            $m++
+        }
+        $lines.Add('  RMDir /r "' + $old + '"')
+        $lines.Add('  Goto retire_done_' + $n)
+        $lines.Add('  retire_failed_' + $n + ':')
+        $lines.Add('  DetailPrint "Archive of ' + $r.Folder + ' failed (exit $0); the folder is left in place."')
+        $lines.Add('  retire_done_' + $n + ':')
         $n++
     }
     $lines.Add('!macroend')
@@ -443,7 +502,7 @@ $manifestPath = Join-Path $StageRoot 'suite-manifest.json'
 Write-Step ('Wrote ' + $manifestPath)
 
 $includePath = Join-Path $StageRoot 'components.nsh'
-Write-ComponentsInclude -Table $Components -Path $includePath -Renames $FolderRenames -RetiredShortcuts $RetiredShortcuts
+Write-ComponentsInclude -Table $Components -Path $includePath -Renames $FolderRenames -Retired $RetiredComponents -RetiredShortcuts $RetiredShortcuts
 Write-Step ('Wrote ' + $includePath)
 
 $payloadBytes = (Get-ChildItem -LiteralPath $StageRoot -Recurse -File | Measure-Object -Property Length -Sum).Sum
