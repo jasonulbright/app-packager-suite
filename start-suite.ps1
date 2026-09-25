@@ -36,7 +36,6 @@ $script:ToolRegistry = @(
     @{ Folder = 'detection-tester';                  Name = 'Detection Tester';        Script = 'start-detectiontester.ps1' }
     @{ Folder = 'installer-analysis';                Name = 'Installer Analysis';      Script = 'start-installeranalysis.ps1' }
     @{ Folder = 'maintenance-window-manager';        Name = 'Maintenance Windows';     Script = 'start-maintenancewindowmgr.ps1' }
-    @{ Folder = 'mecm-health-dashboard';             Name = 'Health Dashboard';        Script = 'start-mecmhealthdashboard.ps1' }
     @{ Folder = 'collection-and-compliance-manager'; Name = 'Collection + Compliance'; Script = 'start-ccm.ps1' }
     @{ Folder = 'site-hygiene';                      Name = 'Site Hygiene';            Script = 'start-sitehygiene.ps1' }
 )

@@ -12,8 +12,14 @@
   !error "OUTFILE is required (makensis /DOUTFILE=...)"
 !endif
 
-!define SUITE_NAME    "AppPackager Suite"
-!define SUITE_KEY     "AppPackagerSuite"
+; SUITE_NAME and SUITE_KEY are overridable so the upgrade test can install a
+; fixture under its own Start Menu folder and ARP key.
+!ifndef SUITE_NAME
+  !define SUITE_NAME  "AppPackager Suite"
+!endif
+!ifndef SUITE_KEY
+  !define SUITE_KEY   "AppPackagerSuite"
+!endif
 !define SUITE_PUB     "Jason Ulbright"
 !define ARP_ROOT      "Software\Microsoft\Windows\CurrentVersion\Uninstall\${SUITE_KEY}"
 !define PS_ARGS_PRE   "-NoProfile -ExecutionPolicy Bypass -File"
@@ -76,6 +82,7 @@ Section "Suite" SecSuite
   File "${PAYLOADDIR}\suite-manifest.json"
 
   !insertmacro SUITE_MIGRATE_FOLDERS
+  !insertmacro SUITE_RETIRE_COMPONENTS
   !insertmacro SUITE_INSTALL_FILES
 
   CreateDirectory "$StartMenuDir"

@@ -11,7 +11,7 @@ on:
         required: true
         type: string
       headline:
-        description: Release notes headline metric (for example 1 of 12 components refreshed)
+        description: Release notes headline metric (for example 1 of 10 components refreshed)
         required: true
         type: string
 

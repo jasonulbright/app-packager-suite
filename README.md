@@ -52,7 +52,7 @@ configuration. The launcher embeds no tools and hosts no plugins.
 
 `installer\suite.nsi` builds `SuiteSetup-<version>.exe`, a single
 installer carrying every suite tool plus this repository (the launcher
-and `SuiteCommon`). Twelve components ship:
+and `SuiteCommon`). Ten components ship:
 
 | Component | Folder | Entry script |
 | --- | --- | --- |
@@ -66,8 +66,6 @@ and `SuiteCommon`). Twelve components ship:
 | DP Content Manager | `dp-content-manager\` | `start-dpcontentmgr.ps1` |
 | Installer Analysis | `installer-analysis\` | `start-installeranalysis.ps1` |
 | Maintenance Window Manager | `maintenance-window-manager\` | `start-maintenancewindowmgr.ps1` |
-| ConfigMgr Health Dashboard | `mecm-health-dashboard\` | `start-mecmhealthdashboard.ps1` |
-| Supersedence and Dependency Auditor | `supersedence-auditor\` | `start-supersedenceauditor.ps1` |
 
 The component list lives in one table in
 `tools\build-suite-installer.ps1`. That table drives staging, the
@@ -91,7 +89,7 @@ What the installer does:
   Add/Remove Programs entry is written under `HKCU`. Nothing touches
   `Program Files`, the machine registry, or another user's profile.
 - **Creates a start-menu group, "AppPackager Suite"**, with a shortcut
-  for each of the eleven tools and one for the launcher. Each shortcut runs
+  for each of the nine tools and one for the launcher. Each shortcut runs
   `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <entry>.ps1`,
   so the tools start regardless of the machine's execution policy without
   changing that policy for anything else.
@@ -107,6 +105,17 @@ package are replaced; files that do not ship are left alone. That covers
 your settings and window state (`*.json`), the `Logs\` folders, and the
 downloaded icon pack at `app-packager\Packagers\Icons\` - all of them
 survive an upgrade untouched.
+
+Two earlier components, ConfigMgr Health Dashboard and Supersedence and
+Dependency Auditor, folded into Site Hygiene. An upgrade over an install
+that still holds them zips each old folder in full to
+`site-hygiene\legacy\<component>.zip` (through `powershell.exe`
+`Compress-Archive`), moves its `*.json` files, `History`, `Logs`, and
+`Reports` to `site-hygiene\legacy\<component>\`, removes the old folder,
+and removes its Start Menu shortcut. A folder whose zip fails is left in
+place. Site Hygiene imports the dashboard's settings and history from
+the legacy folder on its next launch. `Tests\SuiteInstaller.Upgrade.Tests.ps1`
+exercises this path with a fixture installer under a temporary folder.
 
 Uninstalling removes only the files the installer shipped: preferences,
 logs, downloaded icons, and anything else written after install stay in
