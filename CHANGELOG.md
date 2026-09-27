@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026.09.27.0037] - 2026-09-27
+
+## 1 of 10 components refreshed
+
+### Installer
+
+- Carry deployment-helper 2026.09.27.0011 with ring deployments; the other nine components are unchanged.
+
 ## [2026.09.25.0036] - 2026-09-25
 
 ## 1 of 10 components refreshed
