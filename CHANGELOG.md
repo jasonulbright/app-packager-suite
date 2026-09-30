@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026.09.30.0038] - 2026-09-30
+
+## 3 of 10 components refreshed
+
+### Installer
+
+- Carry app-packager 2026.09.30.0097 with WSUS publishing and three publish buttons.
+- Carry site-hygiene 2026.09.29.0023 with the Live view read fixes.
+- Carry deployment-helper 2026.09.29.0012 with the browse list and layout fixes.
+- The other seven components are unchanged.
 ## [2026.09.27.0037] - 2026-09-27
 
 ## 1 of 10 components refreshed
