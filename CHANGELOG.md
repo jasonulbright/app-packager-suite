@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026.09.30.0041] - 2026-09-30
+
+## 1 of 10 components refreshed
+
+### Installer
+
+- Carry app-packager 2026.09.30.0100 with the multilingual Adobe Acrobat Reader; the other nine components are unchanged.
 ## [2026.09.30.0040] - 2026-09-30
 
 ## 1 of 10 components refreshed
