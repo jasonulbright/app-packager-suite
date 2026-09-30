@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026.09.30.0039] - 2026-09-30
+
+## 1 of 10 components refreshed
+
+### Installer
+
+- Carry app-packager 2026.09.30.0098; the other nine components are unchanged.
 ## [2026.09.30.0038] - 2026-09-30
 
 ## 3 of 10 components refreshed
