@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026.10.01.0043] - 2026-10-01
+
+## 1 of 10 components refreshed
+
+### Installer
+
+- Carry app-packager 2026.10.01.0102 with the Options crash fix; the other nine components are unchanged.
 ## [2026.10.01.0042] - 2026-10-01
 
 ## 1 of 10 components refreshed
