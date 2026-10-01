@@ -215,9 +215,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          section=$(awk -v v="## [$VERSION]" 'index($0, v) == 1 { on = 1; next } on && /^## \[/ { exit } on { print }' CHANGELOG.md | tr -d '\r')
+          section=$(awk -v v="## [$VERSION]" 'index($0, v) == 1 { on = 1; next } on && /^## \[/ { exit } on { print }' CHANGELOG.md | tr -d '\r' | sed -e '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
           test -n "$(printf '%s' "$section" | tr -d '[:space:]')" || { echo "CHANGELOG.md has no entry for $VERSION"; exit 1; }
-          printf '## %s\n%s\nFull changelog: CHANGELOG.md\n' "$HEADLINE" "$section" > notes.md
+          # A changelog entry that already starts with a ## headline keeps it; the headline input fills only a missing one.
+          if printf '%s\n' "$section" | head -n 1 | grep -q '^## '; then body="$section"; else body=$(printf '## %s\n\n%s' "$HEADLINE" "$section"); fi
+          printf '%s\n\nFull changelog: CHANGELOG.md\n' "$body" > notes.md
           cat notes.md
           if gh release view "$RELEASE_TAG" --json isDraft >/dev/null 2>&1; then
             test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
