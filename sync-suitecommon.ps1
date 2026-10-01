@@ -34,7 +34,8 @@ if (-not $Consumer -or $Consumer.Count -eq 0) {
         (Join-Path $projectsRoot 'maintenance-window-manager'),
         (Join-Path $projectsRoot 'mecm-health-dashboard'),
         (Join-Path $projectsRoot 'collection-and-compliance-manager'),
-        (Join-Path $projectsRoot 'app-packager')
+        (Join-Path $projectsRoot 'app-packager'),
+        (Join-Path $projectsRoot 'pivots-and-scripts')
     )
 }
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026.10.01.0044] - 2026-10-01
+
+## 11 components, 1 added
+
+### Installer
+
+- Adds Pivots and Scripts 2026.10.01.0002.
+- Ships the other ten components unchanged.
 ## [2026.10.01.0043] - 2026-10-01
 
 ## 1 of 10 components refreshed
