@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026.10.01.0042] - 2026-10-01
+
+## 1 of 10 components refreshed
+
+### Installer
+
+- Carry app-packager 2026.10.01.0101 with PyCharm 2026; the other nine components are unchanged.
 ## [2026.09.30.0041] - 2026-09-30
 
 ## 1 of 10 components refreshed
