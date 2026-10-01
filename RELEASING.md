@@ -61,7 +61,7 @@ The workflow:
 3. Installs NSIS and runs `tools/build-suite-installer.ps1 -SuiteVersion <version> -AllowUnpublished app-packager-suite`.
 4. Builds `AppPackagerSuite-<version>.zip` with `git archive`, excluding `Tests`, `*.Tests.ps1`, `.github` and this file.
 5. Signs the installer with Azure Artifact Signing (`signalridgelabs` / `SRL-Public`) through the `release` environment's federated credential, then verifies the signature is valid, from `CN=Jason Ulbright`, and timestamped.
-6. Writes `checksums.txt` (`<sha256>  <name>`, two spaces) and creates a **draft** release titled with the tag, notes = headline + changelog entry + `Full changelog: CHANGELOG.md`.
+6. Writes `checksums.txt` (`<sha256>  <name>`, two spaces) and creates a **draft** release titled with the tag, notes = changelog entry + `Full changelog: CHANGELOG.md`. The `headline` input is used only when the changelog entry has no `##` headline.
 
 The `release` environment holds `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`. The Entra app's federated credential must trust the subject GitHub sends for this repository:
 
