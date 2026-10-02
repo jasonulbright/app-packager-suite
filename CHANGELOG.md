@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026.10.02.0045] - 2026-10-02
+
+## 1 of 11 components refreshed
+
+### Installer
+
+- Carries app-packager 2026.10.02.0103 with the Anypoint Studio packager.
+- Ships the other ten components unchanged.
 ## [2026.10.01.0044] - 2026-10-01
 
 ## 11 components, 1 added
