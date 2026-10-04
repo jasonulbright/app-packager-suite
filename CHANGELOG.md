@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026.10.03.0046] - 2026-10-03
+
+## 1 of 11 components refreshed
+
+### Installer
+
+- Carries site-hygiene 2026.10.03.0024, which finds supersedence and dependency relationships.
+- Ships the other ten components unchanged.
 ## [2026.10.02.0045] - 2026-10-02
 
 ## 1 of 11 components refreshed
