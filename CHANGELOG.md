@@ -1,5 +1,14 @@
 # Changelog
 
+## [2026.10.07.0048] - 2026-10-07
+
+## 1 of 11 components refreshed
+
+### Installer
+
+- Carries collection-manager 2026.10.07.0011 with reusable site WQL query management.
+- Ships the other ten components unchanged.
+
 ## [2026.10.07.0047] - 2026-10-07
 
 ## 2 of 11 components refreshed
