@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026.10.07.0047] - 2026-10-07
+
+## 2 of 11 components refreshed
+
+### Installer
+
+- Carries app-packager 2026.10.07.0104 with the WSUS support and packager safety updates.
+- Carries collection-manager 2026.10.07.0010 with connect-without-scan, open-by-ID, and large-site inventory improvements.
+- Ships the other nine components unchanged.
+
 ## [2026.10.03.0046] - 2026-10-03
 
 ## 1 of 11 components refreshed
