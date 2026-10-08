@@ -1,5 +1,18 @@
 # Changelog
 
+## [2026.10.07.0049] - 2026-10-07
+
+## 9 of 11 components refreshed
+
+### Installer
+
+- Carries App Packager 2026.10.07.0106 with the 0049 shared module version.
+- Carries Site Hygiene 2026.10.07.0025 and Collection and Compliance Manager 2026.10.07.0009.
+- Carries Collection Manager 2026.10.07.0012 and Deployment Helper 2026.10.07.0013.
+- Carries Detection Method Tester 2026.10.07.0009 and DP Content Manager 2026.10.07.0009.
+- Carries Installer Analysis 2026.10.07.0014 and Maintenance Window Manager 2026.10.07.0009.
+- Carries Pivots and Scripts 2026.10.01.0002 unchanged.
+
 ## [2026.10.07.0048] - 2026-10-07
 
 ## 1 of 11 components refreshed
