@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026.10.11.0054] - 2026-10-11
+
+## 1 window fix
+
+### Shared module
+
+- Double-click the title bar to maximize or restore the window.
+
 ## [2026.10.11.0053] - 2026-10-11
 
 ## 11 of 11 components refreshed
