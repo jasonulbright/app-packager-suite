@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026.10.11.0051] - 2026-10-11
+
+## 1 icon fix
+
+### Installer
+
+- Trim the empty border from the suite icon so it fills the taskbar and Software Center tile.
+
 ## [2026.10.11.0050] - 2026-10-11
 
 ## 1 of 11 components refreshed
