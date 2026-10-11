@@ -40,7 +40,7 @@ Describe 'Suite installer upgrade over a retired component' -Skip:(-not $script:
 
         # Two tiny components stand in for the payload.
         $table = @(
-            [pscustomobject]@{ Folder = 'app-packager-suite'; Entry = 'start-suite.ps1';       Shortcut = 'Fixture Launcher' }
+            [pscustomobject]@{ Folder = 'app-packager-suite'; Entry = 'start-suite.ps1';       Shortcut = 'Fixture Launcher'; Icon = 'assets\apppackager-suite.ico' }
             [pscustomobject]@{ Folder = 'site-hygiene';       Entry = 'start-sitehygiene.ps1'; Shortcut = 'Fixture Site Hygiene' }
         )
         foreach ($c in $table) {
@@ -49,6 +49,9 @@ Describe 'Suite installer upgrade over a retired component' -Skip:(-not $script:
             Set-Content -LiteralPath (Join-Path $dir $c.Entry) -Value '# fixture' -Encoding ASCII
             Set-Content -LiteralPath (Join-Path $dir 'Module\fixture.psm1') -Value '# fixture' -Encoding ASCII
         }
+        # suite.nsi takes the setup icon from the suite component's assets folder.
+        New-Item -ItemType Directory -Path (Join-Path $stage 'app-packager-suite\assets') -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'assets\apppackager-suite.ico') -Destination (Join-Path $stage 'app-packager-suite\assets\apppackager-suite.ico')
         '{ "suite": "fixture" }' | Set-Content -LiteralPath (Join-Path $stage 'suite-manifest.json') -Encoding ASCII
         Write-ComponentsInclude -Table $table -Path (Join-Path $stage 'components.nsh') -Retired $RetiredComponents -RetiredShortcuts $RetiredShortcuts
         $script:nsh = Get-Content -LiteralPath (Join-Path $stage 'components.nsh') -Raw
@@ -118,6 +121,9 @@ Describe 'Suite installer upgrade over a retired component' -Skip:(-not $script:
         $script:nsh | Should -Match 'legacy\\mecm-health-dashboard'
         $script:nsh | Should -Match 'legacy\\supersedence-auditor'
         $script:nsh | Should -Match 'Delete "\$StartMenuDir\\ConfigMgr Health Dashboard\.lnk"'
+        # The launcher shortcut carries the suite icon; the other shortcut does not.
+        $script:nsh | Should -Match ([regex]::Escape('start-suite.ps1"'' "$INSTDIR\app-packager-suite\assets\apppackager-suite.ico" 0'))
+        $script:nsh | Should -Not -Match 'start-sitehygiene\.ps1"'' "'
     }
 
     It 'installs silently' {
