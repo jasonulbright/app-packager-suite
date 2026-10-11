@@ -118,6 +118,7 @@ $mainXaml = @'
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -151,12 +152,28 @@ $mainXaml = @'
             </Grid>
         </Border>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="10,0,10,0">
+        <Border x:Name="pnlUpdate" Grid.Row="1" Padding="14,8,14,8" Margin="10,0,10,6" Visibility="Collapsed"
+                Background="{DynamicResource MahApps.Brushes.Accent4}" BorderBrush="{DynamicResource MahApps.Brushes.Accent}" BorderThickness="1">
+            <DockPanel>
+                <Button x:Name="btnUpdateNow" DockPanel.Dock="Right" Content="Update" MinWidth="90" Height="28" Margin="8,0,0,0"
+                        Style="{DynamicResource MahApps.Styles.Button.Square.Accent}" Controls:ControlsHelper.ContentCharacterCasing="Normal"
+                        ToolTip="Downloads the signed suite installer, verifies it, closes the launcher and installs the update"/>
+                <Button x:Name="btnReleaseNotes" DockPanel.Dock="Right" Content="Release notes" MinWidth="110" Height="28" Margin="8,0,0,0"
+                        Style="{DynamicResource MahApps.Styles.Button.Square}" Controls:ControlsHelper.ContentCharacterCasing="Normal"/>
+                <TextBlock x:Name="txtUpdate" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"/>
+            </DockPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="10,0,10,0">
             <WrapPanel x:Name="panelTiles" Orientation="Horizontal"/>
         </ScrollViewer>
 
-        <Border Grid.Row="2" Padding="14,6,14,6" Background="{DynamicResource MahApps.Brushes.Gray10}">
-            <TextBlock x:Name="txtStatus" Text="Ready." FontSize="11"/>
+        <Border Grid.Row="3" Padding="14,6,14,6" Background="{DynamicResource MahApps.Brushes.Gray10}">
+            <DockPanel>
+                <Button x:Name="btnCheckUpdates" DockPanel.Dock="Right" Content="Check for updates" FontSize="11" Height="24" Padding="8,0"
+                        Style="{DynamicResource MahApps.Styles.Button.Square}" Controls:ControlsHelper.ContentCharacterCasing="Normal"/>
+                <TextBlock x:Name="txtStatus" Text="Ready." FontSize="11" VerticalAlignment="Center"/>
+            </DockPanel>
         </Border>
     </Grid>
 </Controls:MetroWindow>
@@ -171,6 +188,11 @@ $toggleTheme    = $window.FindName('toggleTheme')
 $txtThemeLabel  = $window.FindName('txtThemeLabel')
 $panelTiles     = $window.FindName('panelTiles')
 $txtStatus      = $window.FindName('txtStatus')
+$pnlUpdate      = $window.FindName('pnlUpdate')
+$txtUpdate      = $window.FindName('txtUpdate')
+$btnUpdateNow   = $window.FindName('btnUpdateNow')
+$btnReleaseNotes = $window.FindName('btnReleaseNotes')
+$btnCheckUpdates = $window.FindName('btnCheckUpdates')
 
 function Set-SuiteStatus {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Updates an in-window TextBlock only.')]
@@ -235,6 +257,104 @@ $toggleTheme.Add_Toggled({
     Update-TitleBarBrushes
 })
 
+# Suite update: the installed version comes from suite-manifest.json one
+# level up (the installer's root); a plain checkout has none and shows no
+# banner. The lookup runs off the UI thread and shares the 24-hour cache
+# with every tool.
+$script:SuiteInstall = Get-SuiteInstallInfo -Path $PSScriptRoot
+$script:SuiteUpdate  = $null
+
+function Show-SuiteUpdateBanner {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Updates in-window controls only.')]
+    param($State)
+    $script:SuiteUpdate = $State
+    if ($State -and $State.Available) {
+        $txtUpdate.Text = ('Suite update available: v{0} (installed v{1}). Update closes the launcher and every open tool must be closed first.' -f $State.Latest, $State.Current)
+        $pnlUpdate.Visibility = 'Visible'
+    }
+    else {
+        $pnlUpdate.Visibility = 'Collapsed'
+    }
+}
+
+function Start-SuiteUpdateCheck {
+    param([switch]$Force)
+    if (-not $script:SuiteInstall.Installed) {
+        if ($Force) { Set-SuiteStatus 'Not a suite install: no update check. Install from the suite setup to receive updates.' }
+        return
+    }
+    $state = [hashtable]::Synchronized(@{ Done = $false; Result = $null })
+    $rs = [runspacefactory]::CreateRunspace()
+    $rs.ApartmentState = 'MTA'
+    $rs.Open()
+    $ps = [powershell]::Create()
+    $ps.Runspace = $rs
+    [void]$ps.AddScript({
+        param($State, $ModulePath, $Installed, $ForceCheck)
+        try {
+            Import-Module $ModulePath -Force -DisableNameChecking
+            $State.Result = Get-SuiteUpdateState -InstalledVersion $Installed -Force:$ForceCheck
+        }
+        catch { $State.Result = [pscustomobject]@{ Current = $Installed; Latest = ''; Available = $false; ReleaseUrl = ''; Checked = $false; Error = $_.Exception.Message } }
+        finally { $State.Done = $true }
+    }).AddArgument($state).AddArgument((Join-Path $PSScriptRoot 'SuiteCommon\SuiteCommon.psd1')).AddArgument([string]$script:SuiteInstall.Version).AddArgument([bool]$Force)
+    $handle = $ps.BeginInvoke()
+    if ($Force) { Set-SuiteStatus 'Checking for a suite update...' }
+    $timer = New-Object System.Windows.Threading.DispatcherTimer
+    $timer.Interval = [TimeSpan]::FromMilliseconds(400)
+    $timer.Add_Tick({
+        if (-not $state.Done) { return }
+        $timer.Stop()
+        try {
+            $result = $state.Result
+            Show-SuiteUpdateBanner -State $result
+            if ($result.Error) { Set-SuiteStatus ('Update check failed: {0}' -f $result.Error) }
+            elseif ($result.Available) { Set-SuiteStatus ('Suite update available: v{0}.' -f $result.Latest) }
+            elseif ($Force) { Set-SuiteStatus ('The suite is up to date (v{0}).' -f $result.Current) }
+        }
+        finally {
+            try { $ps.EndInvoke($handle) } catch { $null = $_ }
+            try { $ps.Dispose() } catch { $null = $_ }
+            try { $rs.Close() } catch { $null = $_ }
+        }
+    }.GetNewClosure())
+    $timer.Start()
+}
+
+$btnCheckUpdates.Add_Click({ Start-SuiteUpdateCheck -Force })
+
+$btnReleaseNotes.Add_Click({
+    $url = ''
+    if ($script:SuiteUpdate) { $url = [string]$script:SuiteUpdate.ReleaseUrl }
+    if (-not $url) { $url = 'https://github.com/jasonulbright/app-packager-suite/releases/latest' }
+    if ($url -match '^https://') { try { Start-Process $url } catch { Set-SuiteStatus ('Could not open the release page: ' + $_.Exception.Message) } }
+})
+
+$btnUpdateNow.Add_Click({
+    if (-not $script:SuiteUpdate -or -not $script:SuiteUpdate.Available) { return }
+    $latest = [string]$script:SuiteUpdate.Latest
+    $answer = Show-ConfirmDialog -Owner $window -Title 'Update AppPackager Suite' `
+        -Message ("Suite v{0} will be downloaded, verified and installed over {1}.`n`nClose every suite tool first. The launcher closes now and reopens when the install finishes. Preferences, window state and logs are kept." -f $latest, $script:SuiteInstall.Root)
+    if (-not $answer) { return }
+    $btnUpdateNow.IsEnabled = $false
+    $window.Cursor = [System.Windows.Input.Cursors]::Wait
+    try {
+        Set-SuiteStatus ('Downloading SuiteSetup-{0}.exe...' -f $latest)
+        $installer = Get-SuiteUpdateDownload -Version $latest
+        Set-SuiteStatus 'Installer verified; closing for the update.'
+        $null = Start-SuiteUpdateInstaller -InstallerPath $installer -Relaunch $PSCommandPath
+        $window.Close()
+    }
+    catch {
+        Set-SuiteStatus ('Update failed: {0}' -f $_.Exception.Message)
+        [void](Show-ThemedMessage -Owner $window -Title 'Update failed' -Message $_.Exception.Message -Buttons OK -Icon Error)
+    }
+    finally {
+        $window.Cursor = $null
+        $btnUpdateNow.IsEnabled = $true
+    }
+})
+
 $window.Add_Closing({
     Save-WindowState -Window $window -Path $script:WindowStatePath
 })
@@ -250,6 +370,7 @@ $window.Add_Loaded({
     Set-ButtonTheme
     Update-TitleBarBrushes
     Set-SuiteStatus ('{0} tool(s) found under {1}. Site profile is handed to every launch.' -f $script:Tools.Count, (Get-SuiteToolsRoot))
+    Start-SuiteUpdateCheck
 })
 
 [void]$window.ShowDialog()

@@ -1,5 +1,19 @@
 # Changelog
 
+## [2026.10.11.0052] - 2026-10-11
+
+## 1 update check added
+
+### Launcher
+
+- Check for a newer suite release once a day and show an Update banner.
+- Download the signed installer, verify its checksum and signature, and install it silently.
+- Add a Check for updates button and a Release notes button.
+
+### Shared module
+
+- Add the suite update check, download, verification and installer start for every tool.
+
 ## [2026.10.11.0051] - 2026-10-11
 
 ## 1 icon fix
