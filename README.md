@@ -89,6 +89,17 @@ What the installer does:
   `%LOCALAPPDATA%\AppPackagerSuite\`, one folder per component, and the
   Add/Remove Programs entry is written under `HKCU`. Nothing touches
   `Program Files`, the machine registry, or another user's profile.
+- **Checks for a newer suite release** once a day. The launcher shows an
+  Update banner with Release notes and Update buttons; Update downloads
+  the signed installer from the release, verifies its SHA-256 against
+  `checksums.txt` and its Authenticode signature, closes the launcher,
+  runs the setup silently and reopens the launcher. Every tool shows a
+  one-line notice when the same check finds an update and points to the
+  launcher; no tool updates itself inside a suite install. The check
+  reads `https://api.github.com/repos/jasonulbright/app-packager-suite/releases/latest`
+  through `curl.exe` and caches the answer in
+  `%LOCALAPPDATA%\AppPackagerSuite\update-check.json`. A plain checkout
+  (no `suite-manifest.json`) never checks.
 - **Creates a start-menu group, "AppPackager Suite"**, with a shortcut
   for each of the nine tools and one for the launcher, which carries the
   suite icon. Each shortcut runs

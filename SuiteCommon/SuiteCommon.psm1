@@ -1823,3 +1823,62 @@ function Start-SuiteUpdateInstaller {
     Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', $bootstrap | Out-Null
     return $bootstrap
 }
+
+function Start-SuiteUpdateNotice {
+    <#
+    .SYNOPSIS
+        Runs the suite update check off the UI thread and hands the result
+        to OnResult on the UI thread. One call per tool at window load.
+    .DESCRIPTION
+        Nothing happens for a plain checkout (no suite-manifest.json). The
+        lookup runs in its own runspace with this module imported; a
+        DispatcherTimer polls for the result and invokes OnResult with the
+        Get-SuiteUpdateState object. Every failure is swallowed: a missing
+        network must never touch a tool's launch.
+    .PARAMETER Path
+        The caller's folder ($PSScriptRoot); the manifest is looked for
+        there and one level up.
+    .PARAMETER OnResult
+        Scriptblock receiving the state object. Called only when the check
+        ran or a cached answer exists.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][scriptblock]$OnResult,
+        [switch]$Force
+    )
+    try {
+        $install = Get-SuiteInstallInfo -Path $Path
+        if (-not $install.Installed) { return $null }
+        $state = [hashtable]::Synchronized(@{ Done = $false; Result = $null })
+        $rs = [runspacefactory]::CreateRunspace()
+        $rs.ApartmentState = 'MTA'
+        $rs.Open()
+        $ps = [powershell]::Create()
+        $ps.Runspace = $rs
+        $modulePath = Join-Path $PSScriptRoot 'SuiteCommon.psd1'
+        [void]$ps.AddScript({
+            param($State, $ModulePath, $Installed, $ForceCheck)
+            try {
+                Import-Module $ModulePath -Force -DisableNameChecking
+                $State.Result = Get-SuiteUpdateState -InstalledVersion $Installed -Force:$ForceCheck
+            }
+            catch { $State.Result = $null }
+            finally { $State.Done = $true }
+        }).AddArgument($state).AddArgument($modulePath).AddArgument([string]$install.Version).AddArgument([bool]$Force)
+        $handle = $ps.BeginInvoke()
+        $timer = New-Object System.Windows.Threading.DispatcherTimer
+        $timer.Interval = [TimeSpan]::FromMilliseconds(500)
+        $timer.Add_Tick({
+            if (-not $state.Done) { return }
+            $timer.Stop()
+            try { if ($state.Result) { & $OnResult $state.Result } } catch { $null = $_ }
+            try { $ps.EndInvoke($handle) } catch { $null = $_ }
+            try { $ps.Dispose() } catch { $null = $_ }
+            try { $rs.Close() } catch { $null = $_ }
+        }.GetNewClosure())
+        $timer.Start()
+        return $timer
+    }
+    catch { return $null }
+}

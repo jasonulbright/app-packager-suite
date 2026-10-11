@@ -1,5 +1,17 @@
 # Changelog
 
+## [2026.10.11.0053] - 2026-10-11
+
+## 11 of 11 components refreshed
+
+### Installer
+
+- Carry App Packager 2026.10.11.0111 and the nine tools released today.
+
+### Shared module
+
+- Add the update notice helper every tool calls at window load.
+
 ## [2026.10.11.0052] - 2026-10-11
 
 ## 1 update check added
