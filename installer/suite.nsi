@@ -49,6 +49,11 @@ VIAddVersionKey "LegalCopyright"  "MIT"
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
 
+; The suite icon: the setup and uninstall executables and, through
+; components.nsh, the launcher shortcut.
+!define MUI_ICON   "${PAYLOADDIR}\app-packager-suite\assets\apppackager-suite.ico"
+!define MUI_UNICON "${PAYLOADDIR}\app-packager-suite\assets\apppackager-suite.ico"
+
 ; Per-component File, shortcut and shortcut-delete lines, generated into the
 ; payload directory by tools\build-suite-installer.ps1 from its component table.
 !include "${PAYLOADDIR}\components.nsh"

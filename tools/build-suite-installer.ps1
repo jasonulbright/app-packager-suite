@@ -69,7 +69,8 @@ $SiblingRoot  = Split-Path -Parent $RepoRoot
 # Version line trails the CHANGELOG in most tool repositories, so only the
 # repositories whose header is maintained use ScriptHeader.
 $Components = @(
-    [pscustomobject]@{ Folder = 'app-packager-suite'; Repo = 'app-packager-suite'; Entry = 'start-suite.ps1';                  Shortcut = 'AppPackager Suite Launcher';      VersionSource = 'ModuleManifest'; VersionFile = 'SuiteCommon\SuiteCommon.psd1' }
+    # Icon: a shipped .ico, relative to the component folder, for the Start Menu shortcut; omitted, the shortcut shows the PowerShell icon.
+    [pscustomobject]@{ Folder = 'app-packager-suite'; Repo = 'app-packager-suite'; Entry = 'start-suite.ps1';                  Shortcut = 'AppPackager Suite Launcher';      VersionSource = 'ModuleManifest'; VersionFile = 'SuiteCommon\SuiteCommon.psd1'; Icon = 'assets\apppackager-suite.ico' }
     [pscustomobject]@{ Folder = 'app-packager'; Repo = 'app-packager'; Entry = 'start-apppackager.ps1';            Shortcut = 'App Packager';                    VersionSource = 'ScriptHeader';   VersionFile = '' }
     [pscustomobject]@{ Folder = 'site-hygiene'; Repo = 'site-hygiene'; Entry = 'start-sitehygiene.ps1';            Shortcut = 'Site Hygiene';                    VersionSource = 'Changelog';      VersionFile = 'CHANGELOG.md' }
     [pscustomobject]@{ Folder = 'collection-and-compliance-manager'; Repo = 'collection-and-compliance-manager'; Entry = 'start-ccm.ps1';                  Shortcut = 'Collection and Compliance Manager'; VersionSource = 'Changelog'; VersionFile = 'CHANGELOG.md' }
@@ -386,8 +387,12 @@ function Write-ComponentsInclude {
     foreach ($c in $Table) {
         # SetOutPath fixes each shortcut's working directory at its own folder.
         $lines.Add('  SetOutPath "$INSTDIR\' + $c.Folder + '"')
+        $icon = ''
+        if ($c.PSObject.Properties['Icon'] -and -not [string]::IsNullOrWhiteSpace([string]$c.Icon)) {
+            $icon = ' "$INSTDIR\' + $c.Folder + '\' + $c.Icon + '" 0'
+        }
         $lines.Add('  CreateShortcut "$StartMenuDir\' + $c.Shortcut + '.lnk" "$PSExe" \')
-        $lines.Add('    ' + "'" + '${PS_ARGS_PRE} "$INSTDIR\' + $c.Folder + '\' + $c.Entry + '"' + "'")
+        $lines.Add('    ' + "'" + '${PS_ARGS_PRE} "$INSTDIR\' + $c.Folder + '\' + $c.Entry + '"' + "'" + $icon)
     }
     $lines.Add('!macroend')
     $lines.Add('')

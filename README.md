@@ -90,7 +90,8 @@ What the installer does:
   Add/Remove Programs entry is written under `HKCU`. Nothing touches
   `Program Files`, the machine registry, or another user's profile.
 - **Creates a start-menu group, "AppPackager Suite"**, with a shortcut
-  for each of the nine tools and one for the launcher. Each shortcut runs
+  for each of the nine tools and one for the launcher, which carries the
+  suite icon. Each shortcut runs
   `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <entry>.ps1`,
   so the tools start regardless of the machine's execution policy without
   changing that policy for anything else.

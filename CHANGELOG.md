@@ -1,5 +1,14 @@
 # Changelog
 
+## [2026.10.11.0050] - 2026-10-11
+
+## 1 of 11 components refreshed
+
+### Installer
+
+- Carries App Packager 2026.10.11.0110 with the 0050 shared module version; the other nine components are unchanged.
+- Show the suite icon on the setup, the uninstaller and the launcher shortcut.
+
 ## [2026.10.07.0049] - 2026-10-07
 
 ## 9 of 11 components refreshed
