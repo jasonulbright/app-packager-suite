@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026.10.12.0058] - 2026-10-12
+
+## 1 PowerShell 7 fix
+
+### Shared module
+
+- Keep the PowerShell 7 module roots when a tool runs under PowerShell 7.
+
 ## [2026.10.11.0057] - 2026-10-11
 
 ## 1 component refreshed
