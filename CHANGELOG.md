@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026.10.12.0060] - 2026-10-12
+
+## 1 component refreshed
+
+### Installer
+
+- Carry App Packager 2026.10.12.0117; the other ten components are unchanged.
+
 ## [2026.10.12.0059] - 2026-10-12
 
 ## 1 component refreshed
