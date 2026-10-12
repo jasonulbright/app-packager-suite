@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026.10.12.0059] - 2026-10-12
+
+## 1 component refreshed
+
+### Installer
+
+- Carry Deployment Helper 2026.10.12.0017; the other ten components are unchanged.
+
 ## [2026.10.12.0058] - 2026-10-12
 
 ## 1 PowerShell 7 fix
