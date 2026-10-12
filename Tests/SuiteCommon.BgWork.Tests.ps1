@@ -66,6 +66,13 @@ Describe 'Repair-WindowsPowerShellModulePath' {
         try {
             $winPs = Join-Path $PSHOME 'Modules'
             $env:PSModulePath = 'C:\Users\x\Documents\PowerShell\Modules;C:\Program Files\PowerShell\Modules;c:\program files\windowsapps\microsoft.powershell_7.6.5.0_x64__8wekyb3d8bbwe\Modules;C:\Program Files\WindowsPowerShell\Modules;' + $winPs + ';C:\bin'
+            if ($PSVersionTable.PSEdition -eq 'Core') {
+                # A PowerShell 7 host keeps its own roots: the repair is a no-op there.
+                $before = $env:PSModulePath
+                Repair-WindowsPowerShellModulePath | Should -BeFalse
+                $env:PSModulePath | Should -Be $before
+                return
+            }
             Repair-WindowsPowerShellModulePath | Should -BeTrue
             $roots = @($env:PSModulePath -split ';')
             $roots | Should -Not -Contain 'C:\Program Files\PowerShell\Modules'
