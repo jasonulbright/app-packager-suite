@@ -1,5 +1,28 @@
 # Changelog
 
+## [2026.10.25.0065] - 2026-10-25
+
+## 6 components refreshed
+
+### Installer
+
+- Merge an old install folder into its renamed replacement without losing files.
+- Stage the installer build in a temporary folder.
+
+### Launcher
+
+- Report when the connection profile or theme cannot be saved.
+- Return a folder selection only when the picker is confirmed.
+- Quote tool arguments that contain spaces.
+
+### Components
+
+- Carry App Packager 2026.10.25.0122.
+- Carry Installer Analysis 2026.10.25.0018.
+- Carry Collection and Compliance Manager 2026.10.25.0013.
+- Carry Collection Manager 2026.10.25.0016.
+- Carry Deployment Helper 2026.10.25.0018.
+- Carry Maintenance Window Manager 2026.10.25.0013; the other four components are unchanged.
 ## [2026.10.20.0064] - 2026-10-20
 
 ## 1 component refreshed

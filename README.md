@@ -130,6 +130,15 @@ place. Site Hygiene imports the dashboard's settings and history from
 the legacy folder on its next launch. `Tests\SuiteInstaller.Upgrade.Tests.ps1`
 exercises this path with a fixture installer under a temporary folder.
 
+The launcher folder was named `suite-core\` in earlier installers. An
+upgrade renames it to `app-packager-suite\`. When both folders exist,
+setup moves each file of `suite-core\` that is absent from
+`app-packager-suite\`, deletes a file with identical content, and keeps a
+file with different content under `app-packager-suite\legacy\suite-core\`.
+Setup deletes `suite-core\` only when no file is left in it. A file that
+cannot move, for example one that a running tool holds open, stays in
+`suite-core\`, and the next upgrade continues the merge.
+
 Uninstalling removes only the files the installer shipped: preferences,
 logs, downloaded icons, and anything else written after install stay in
 place, and folders holding them survive. A component folder disappears

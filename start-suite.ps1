@@ -90,6 +90,18 @@ function Set-LaunchEnvironment {
     if ($site)     { $env:SUITE_CM_SITECODE = $site }     else { Remove-Item Env:SUITE_CM_SITECODE -ErrorAction SilentlyContinue }
 }
 
+function Save-LauncherSettings {
+    # Save-SuiteSettings returns $false on a failed write and never throws, so
+    # the result is the only signal that the file on disk still holds the old
+    # values. Message is empty after a successful write.
+    param([Parameter(Mandatory)][string]$Subject)
+    if (Save-SuiteSettings -Path $script:SettingsPath -Settings $global:Prefs) {
+        return [pscustomobject]@{ Saved = $true; Message = '' }
+    }
+    $message = '{0} not saved: cannot write {1}. Close any program that holds the file, make the file and its folder writable, then try again.' -f $Subject, $script:SettingsPath
+    return [pscustomobject]@{ Saved = $false; Message = $message }
+}
+
 function Start-SuiteTool {
     param([Parameter(Mandatory)]$Tool)
     Set-LaunchEnvironment
@@ -242,9 +254,14 @@ $txtProvider.Text = [string]$global:Prefs['SMSProvider']
 $btnSaveProfile.Add_Click({
     $global:Prefs['SiteCode']    = ([string]$txtSiteCode.Text).Trim()
     $global:Prefs['SMSProvider'] = ([string]$txtProvider.Text).Trim()
-    $null = Save-SuiteSettings -Path $script:SettingsPath -Settings $global:Prefs
+    $result = Save-LauncherSettings -Subject 'Connection profile'
     Set-LaunchEnvironment
-    Set-SuiteStatus 'Connection profile saved; new launches inherit it.'
+    if ($result.Saved) {
+        Set-SuiteStatus 'Connection profile saved; new launches inherit it.'
+        return
+    }
+    Set-SuiteStatus ($result.Message + ' New launches in this session still inherit it.')
+    [void](Show-ThemedMessage -Owner $window -Title 'Connection profile not saved' -Message $result.Message -Buttons OK -Icon Error)
 })
 
 $toggleTheme.Add_Toggled({
@@ -252,9 +269,15 @@ $toggleTheme.Add_Toggled({
     if ($isDark) { [void][ControlzEx.Theming.ThemeManager]::Current.ChangeTheme($window, 'Dark.Steel'); $txtThemeLabel.Text = 'Dark Theme' }
     else         { [void][ControlzEx.Theming.ThemeManager]::Current.ChangeTheme($window, 'Light.Blue'); $txtThemeLabel.Text = 'Light Theme' }
     $global:Prefs['DarkMode'] = $isDark
-    $null = Save-SuiteSettings -Path $script:SettingsPath -Settings $global:Prefs
+    # The Loaded handler sets IsOn to the stored value; that raises Toggled
+    # without a user choice, so nothing is written or reported then.
+    $result = if ($script:RestoringTheme) { [pscustomobject]@{ Saved = $true; Message = '' } } else { Save-LauncherSettings -Subject 'Theme choice' }
     Set-ButtonTheme
     Update-TitleBarBrushes
+    if (-not $result.Saved) {
+        Set-SuiteStatus ($result.Message + ' The theme applies to this session only.')
+        [void](Show-ThemedMessage -Owner $window -Title 'Theme choice not saved' -Message $result.Message -Buttons OK -Icon Error)
+    }
 })
 
 # Suite update: the installed version comes from suite-manifest.json one
@@ -362,7 +385,8 @@ $window.Add_Closing({
 $window.Add_Loaded({
     Restore-WindowState -Window $window -Path $script:WindowStatePath
     $isDark = [bool]$global:Prefs['DarkMode']
-    $toggleTheme.IsOn = $isDark
+    $script:RestoringTheme = $true
+    try { $toggleTheme.IsOn = $isDark } finally { $script:RestoringTheme = $false }
     if (-not $isDark) {
         [void][ControlzEx.Theming.ThemeManager]::Current.ChangeTheme($window, 'Light.Blue')
         $txtThemeLabel.Text = 'Light Theme'

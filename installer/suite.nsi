@@ -23,6 +23,8 @@
 !define SUITE_PUB     "Jason Ulbright"
 !define ARP_ROOT      "Software\Microsoft\Windows\CurrentVersion\Uninstall\${SUITE_KEY}"
 !define PS_ARGS_PRE   "-NoProfile -ExecutionPolicy Bypass -File"
+; Folder of this script: components.nsh names helper files that ship beside it.
+!define INSTALLERSRC  "${__FILEDIR__}"
 
 Unicode true
 SetCompressor /SOLID lzma
