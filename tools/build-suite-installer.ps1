@@ -5,9 +5,9 @@
 .DESCRIPTION
     Stages the payload from the local sibling repositories at their current
     HEAD via git archive, writes suite-manifest.json describing the suite and
-    each component, generates installer\stage\components.nsh from the same
-    component table, compiles installer\suite.nsi with makensis, and emits
-    SuiteSetup-<version>.exe plus checksums.txt into installer\out.
+    each component, generates components.nsh in the staging folder from the
+    same component table, compiles installer\suite.nsi with makensis, and
+    emits SuiteSetup-<version>.exe plus checksums.txt into installer\out.
 
     Adding a component is one row in $Components: staging, the manifest, the
     payload File blocks and the start-menu shortcuts all read that row.
@@ -25,6 +25,11 @@
 
 .PARAMETER KeepStage
     Leave the staging folder in place for inspection.
+
+.PARAMETER StageRoot
+    Staging folder. Defaults to a new folder under the temp path. A folder
+    inside a component checkout shows as untracked files and fails that
+    checkout's clean-tree check.
 
 .PARAMETER SkipReleaseCheck
     Skip the two remote checks (tag on origin, GitHub release) for every
@@ -44,6 +49,7 @@ param(
     [string]$SuiteVersion,
     [string]$MakeNsis = 'C:\Program Files (x86)\NSIS\makensis.exe',
     [switch]$KeepStage,
+    [string]$StageRoot,
     # Skips the remote checks (tag on origin, GitHub release) for an offline build.
     [switch]$SkipReleaseCheck,
     # Component repositories whose release this very build is part of: the
@@ -60,7 +66,9 @@ $ErrorActionPreference = 'Stop'
 $RepoRoot     = Split-Path -Parent $PSScriptRoot
 $InstallerDir = Join-Path $RepoRoot 'installer'
 $OutDir       = Join-Path $InstallerDir 'out'
-$StageRoot    = Join-Path $InstallerDir 'stage'
+if ([string]::IsNullOrWhiteSpace($StageRoot)) {
+    $StageRoot = Join-Path ([IO.Path]::GetTempPath()) ('suite-stage-' + [Guid]::NewGuid().ToString('N'))
+}
 $NsiPath      = Join-Path $InstallerDir 'suite.nsi'
 $SiblingRoot  = Split-Path -Parent $RepoRoot
 
@@ -296,7 +304,9 @@ function Write-ComponentsInclude {
     $lines.Add('')
     # A directory rename keeps every user file. It fails while a file in the
     # old folder is loaded by a running tool, so the user closes it and retries.
-    # When both folders exist, only user JSON absent from the new folder moves.
+    # When both folders exist, merge-user-folder.ps1 moves every file absent from
+    # the new folder, keeps a differing old file under legacy\, and removes the
+    # old folder only when no file is left in it.
     $lines.Add('!macro SUITE_MIGRATE_FOLDERS')
     $n = 0
     foreach ($r in $Renames) {
@@ -311,16 +321,15 @@ function Write-ComponentsInclude {
         $lines.Add('  MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "Setup cannot move $\"' + $from + '$\". Close every ${SUITE_NAME} tool, then select Retry." /SD IDCANCEL IDRETRY migrate_rename_' + $n)
         $lines.Add('  Abort')
         $lines.Add('  migrate_merge_' + $n + ':')
-        $lines.Add('  FindFirst $0 $1 "' + $from + '\*.json"')
-        $lines.Add('  migrate_loop_' + $n + ':')
-        $lines.Add('  StrCmp $1 "" migrate_loopdone_' + $n)
-        $lines.Add('  IfFileExists "' + $to + '\$1" +2')
-        $lines.Add('  Rename "' + $from + '\$1" "' + $to + '\$1"')
-        $lines.Add('  FindNext $0 $1')
-        $lines.Add('  Goto migrate_loop_' + $n)
-        $lines.Add('  migrate_loopdone_' + $n + ':')
-        $lines.Add('  FindClose $0')
-        $lines.Add('  RMDir /r "' + $from + '"')
+        $lines.Add('  InitPluginsDir')
+        $lines.Add('  File "/oname=$PLUGINSDIR\merge-user-folder.ps1" "${INSTALLERSRC}\merge-user-folder.ps1"')
+        $lines.Add('  System::Call ' + "'" + 'kernel32::SetEnvironmentVariable(t "SUITE_MERGE_SRC", t "' + $from + '")' + "'")
+        $lines.Add('  System::Call ' + "'" + 'kernel32::SetEnvironmentVariable(t "SUITE_MERGE_DST", t "' + $to + '")' + "'")
+        $lines.Add('  DetailPrint "Merging ' + $r.From + ' into ' + $r.To + '"')
+        $lines.Add('  nsExec::ExecToLog ' + "'" + '"$PSExe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\merge-user-folder.ps1"' + "'")
+        $lines.Add('  Pop $0')
+        $lines.Add('  StrCmp $0 0 migrate_done_' + $n)
+        $lines.Add('  DetailPrint "Merge of ' + $r.From + ' stopped (exit $0); files that could not move stay in the old folder."')
         $lines.Add('  migrate_done_' + $n + ':')
         $n++
     }
@@ -449,93 +458,97 @@ foreach ($component in $Components) {
     }
 }
 
-if (Test-Path -LiteralPath $StageRoot) { Remove-Item -LiteralPath $StageRoot -Recurse -Force }
-New-Item -ItemType Directory -Path $StageRoot -Force | Out-Null
-New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
+try {
+    if ((Test-Path -LiteralPath $StageRoot) -and @(Get-ChildItem -LiteralPath $StageRoot -Force).Count -gt 0) {
+        throw ('Staging folder is not empty: ' + $StageRoot)
+    }
+    New-Item -ItemType Directory -Path $StageRoot -Force | Out-Null
 
-$manifestComponents = New-Object System.Collections.Generic.List[object]
+    $manifestComponents = New-Object System.Collections.Generic.List[object]
 
-foreach ($component in $Components) {
-    Write-Step ('Staging ' + $component.Folder + ' from ' + $component.RepoPath)
-    $dest = Join-Path $StageRoot $component.Folder
-    Export-RepoHead -RepoPath $component.RepoPath -Destination $dest
+    foreach ($component in $Components) {
+        Write-Step ('Staging ' + $component.Folder + ' from ' + $component.RepoPath)
+        $dest = Join-Path $StageRoot $component.Folder
+        Export-RepoHead -RepoPath $component.RepoPath -Destination $dest
 
-    $stripped = Remove-TestArtifact -Root $dest
-    if ($stripped -gt 0) { Write-Step ('  removed ' + $stripped + ' test and maintainer file(s) from the payload') }
+        $stripped = Remove-TestArtifact -Root $dest
+        if ($stripped -gt 0) { Write-Step ('  removed ' + $stripped + ' test and maintainer file(s) from the payload') }
 
-    $entryPath = Join-Path $dest $component.Entry
-    if (-not (Test-Path -LiteralPath $entryPath)) {
-        throw ('Entry script missing from payload: ' + $entryPath)
+        $entryPath = Join-Path $dest $component.Entry
+        if (-not (Test-Path -LiteralPath $entryPath)) {
+            throw ('Entry script missing from payload: ' + $entryPath)
+        }
+
+        $version = Get-ComponentVersion -Component $component -StagedRoot $dest
+        if ([string]::IsNullOrWhiteSpace($version)) {
+            throw ('Could not determine a version for ' + $component.Folder)
+        }
+
+        $releaseState = Test-ComponentRelease -Component $component -StagedVersion $version -Offline:($SkipReleaseCheck -or ($AllowUnpublished -contains $component.Repo))
+
+        $fileCount = @(Get-ChildItem -LiteralPath $dest -Recurse -File).Count
+        Write-Step ('  version ' + $version + ' (' + $component.VersionSource + '), ' + $releaseState + ', ' + $fileCount + ' file(s)')
+
+        $manifestComponents.Add([ordered]@{
+            name          = $component.Folder
+            version       = $version
+            versionSource = $component.VersionSource
+            commit        = (Get-HeadCommit -RepoPath $component.RepoPath)
+            entry         = $component.Entry
+            shortcut      = $component.Shortcut
+            files         = $fileCount
+        })
     }
 
-    $version = Get-ComponentVersion -Component $component -StagedRoot $dest
-    if ([string]::IsNullOrWhiteSpace($version)) {
-        throw ('Could not determine a version for ' + $component.Folder)
+    Write-Step ('All ' + $Components.Count + ' components are at their latest release: ' + (($manifestComponents | ForEach-Object { $_.name + ' ' + $_.version }) -join ', '))
+
+    if ($ValidateOnly) {
+        Write-Step 'ValidateOnly: stopping before the installer is compiled.'
+        return
     }
 
-    $releaseState = Test-ComponentRelease -Component $component -StagedVersion $version -Offline:($SkipReleaseCheck -or ($AllowUnpublished -contains $component.Repo))
+    $manifest = [ordered]@{
+        suite      = 'AppPackager Suite'
+        version    = $SuiteVersion
+        built      = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ss')
+        components = $manifestComponents.ToArray()
+    }
+    $manifestPath = Join-Path $StageRoot 'suite-manifest.json'
+    ($manifest | ConvertTo-Json -Depth 5) | Set-Content -LiteralPath $manifestPath -Encoding ASCII
+    Write-Step ('Wrote ' + $manifestPath)
 
-    $fileCount = @(Get-ChildItem -LiteralPath $dest -Recurse -File).Count
-    Write-Step ('  version ' + $version + ' (' + $component.VersionSource + '), ' + $releaseState + ', ' + $fileCount + ' file(s)')
+    $includePath = Join-Path $StageRoot 'components.nsh'
+    Write-ComponentsInclude -Table $Components -Path $includePath -Renames $FolderRenames -Retired $RetiredComponents -RetiredShortcuts $RetiredShortcuts
+    Write-Step ('Wrote ' + $includePath)
 
-    $manifestComponents.Add([ordered]@{
-        name          = $component.Folder
-        version       = $version
-        versionSource = $component.VersionSource
-        commit        = (Get-HeadCommit -RepoPath $component.RepoPath)
-        entry         = $component.Entry
-        shortcut      = $component.Shortcut
-        files         = $fileCount
-    })
+    $payloadBytes = (Get-ChildItem -LiteralPath $StageRoot -Recurse -File | Measure-Object -Property Length -Sum).Sum
+    $payloadFiles = @(Get-ChildItem -LiteralPath $StageRoot -Recurse -File).Count
+
+    New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
+    $outFile = Join-Path $OutDir ('SuiteSetup-' + $SuiteVersion + '.exe')
+    if (Test-Path -LiteralPath $outFile) { Remove-Item -LiteralPath $outFile -Force }
+
+    Write-Step ('Compiling ' + $NsiPath)
+    & $MakeNsis `
+        ('/DSUITEVERSION=' + $SuiteVersion) `
+        ('/DPAYLOADDIR=' + $StageRoot) `
+        ('/DOUTFILE=' + $outFile) `
+        $NsiPath
+    if ($LASTEXITCODE -ne 0) { throw ('makensis failed with exit code ' + $LASTEXITCODE) }
+    if (-not (Test-Path -LiteralPath $outFile)) { throw ('makensis produced no output at ' + $outFile) }
+
+    $hash = (Get-FileHash -LiteralPath $outFile -Algorithm SHA256).Hash.ToLower()
+    $size = (Get-Item -LiteralPath $outFile).Length
+    $checksums = Join-Path $OutDir 'checksums.txt'
+    ($hash + '  ' + (Split-Path -Leaf $outFile)) | Set-Content -LiteralPath $checksums -Encoding ASCII
+
+    Write-Step ('Components: ' + $Components.Count)
+    Write-Step ('Payload : ' + [Math]::Round($payloadBytes / 1MB, 2) + ' MB (' + $payloadFiles + ' files)')
+    Write-Step ('Output  : ' + $outFile)
+    Write-Step ('Size    : ' + [Math]::Round($size / 1MB, 2) + ' MB (' + $size + ' bytes)')
+    Write-Step ('SHA256  : ' + $hash)
+    Write-Step ('Checksum: ' + $checksums)
 }
-
-Write-Step ('All ' + $Components.Count + ' components are at their latest release: ' + (($manifestComponents | ForEach-Object { $_.name + ' ' + $_.version }) -join ', '))
-
-if ($ValidateOnly) {
-    if (-not $KeepStage) { Remove-Item -LiteralPath $StageRoot -Recurse -Force }
-    Write-Step 'ValidateOnly: stopping before the installer is compiled.'
-    return
+finally {
+    if (-not $KeepStage -and (Test-Path -LiteralPath $StageRoot)) { Remove-Item -LiteralPath $StageRoot -Recurse -Force }
 }
-
-$manifest = [ordered]@{
-    suite      = 'AppPackager Suite'
-    version    = $SuiteVersion
-    built      = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ss')
-    components = $manifestComponents.ToArray()
-}
-$manifestPath = Join-Path $StageRoot 'suite-manifest.json'
-($manifest | ConvertTo-Json -Depth 5) | Set-Content -LiteralPath $manifestPath -Encoding ASCII
-Write-Step ('Wrote ' + $manifestPath)
-
-$includePath = Join-Path $StageRoot 'components.nsh'
-Write-ComponentsInclude -Table $Components -Path $includePath -Renames $FolderRenames -Retired $RetiredComponents -RetiredShortcuts $RetiredShortcuts
-Write-Step ('Wrote ' + $includePath)
-
-$payloadBytes = (Get-ChildItem -LiteralPath $StageRoot -Recurse -File | Measure-Object -Property Length -Sum).Sum
-$payloadFiles = @(Get-ChildItem -LiteralPath $StageRoot -Recurse -File).Count
-
-$outFile = Join-Path $OutDir ('SuiteSetup-' + $SuiteVersion + '.exe')
-if (Test-Path -LiteralPath $outFile) { Remove-Item -LiteralPath $outFile -Force }
-
-Write-Step ('Compiling ' + $NsiPath)
-& $MakeNsis `
-    ('/DSUITEVERSION=' + $SuiteVersion) `
-    ('/DPAYLOADDIR=' + $StageRoot) `
-    ('/DOUTFILE=' + $outFile) `
-    $NsiPath
-if ($LASTEXITCODE -ne 0) { throw ('makensis failed with exit code ' + $LASTEXITCODE) }
-if (-not (Test-Path -LiteralPath $outFile)) { throw ('makensis produced no output at ' + $outFile) }
-
-$hash = (Get-FileHash -LiteralPath $outFile -Algorithm SHA256).Hash.ToLower()
-$size = (Get-Item -LiteralPath $outFile).Length
-$checksums = Join-Path $OutDir 'checksums.txt'
-($hash + '  ' + (Split-Path -Leaf $outFile)) | Set-Content -LiteralPath $checksums -Encoding ASCII
-
-if (-not $KeepStage) { Remove-Item -LiteralPath $StageRoot -Recurse -Force }
-
-Write-Step ('Components: ' + $Components.Count)
-Write-Step ('Payload : ' + [Math]::Round($payloadBytes / 1MB, 2) + ' MB (' + $payloadFiles + ' files)')
-Write-Step ('Output  : ' + $outFile)
-Write-Step ('Size    : ' + [Math]::Round($size / 1MB, 2) + ' MB (' + $size + ' bytes)')
-Write-Step ('SHA256  : ' + $hash)
-Write-Step ('Checksum: ' + $checksums)

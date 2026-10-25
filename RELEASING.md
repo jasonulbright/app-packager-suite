@@ -38,7 +38,7 @@ The version is `YYYY.MM.DD.BBBB`: the release date, then a four-digit, zero-padd
 - Carry app-packager 2026.09.18.0090; the other eleven components are unchanged.
 ```
 
-3. Run the tests: `Invoke-Pester -Path Tests` under Windows PowerShell with Pester 5. Any failure stops the release.
+3. Run the tests with Pester 5.7.1 under Windows PowerShell 5.1 (`powershell.exe`) and under PowerShell 7 (`pwsh.exe`): `Invoke-Pester -Path Tests`. Any failure on either host stops the release. The workflow runs the same tests on both hosts and stops before the build when one fails.
 4. Commit as `Release <version>: <summary>`, then tag and push:
 
 ```bash
@@ -56,12 +56,13 @@ gh run watch -R jasonulbright/app-packager-suite $(gh run list -R jasonulbright/
 
 The workflow:
 
-1. Checks the tag is `vYYYY.MM.DD.BBBB` and equals `ModuleVersion`.
-2. Clones each component at its latest GitHub release beside this repository.
-3. Installs NSIS and runs `tools/build-suite-installer.ps1 -SuiteVersion <version> -AllowUnpublished app-packager-suite`.
-4. Builds `AppPackagerSuite-<version>.zip` with `git archive`, excluding `Tests`, `*.Tests.ps1`, `.github` and this file.
-5. Signs the installer with Azure Artifact Signing (`signalridgelabs` / `SRL-Public`) through the `release` environment's federated credential, then verifies the signature is valid, from `CN=Jason Ulbright`, and timestamped.
-6. Writes `checksums.txt` (`<sha256>  <name>`, two spaces) and creates a **draft** release titled with the tag, notes = changelog entry + `Full changelog: CHANGELOG.md`. The `headline` input is used only when the changelog entry has no `##` headline.
+1. Runs `Invoke-Pester -Path Tests` from the tag with Pester 5.7.1 in two separate jobs, one under Windows PowerShell 5.1 and one under PowerShell 7. A failed job stops the run before the build.
+2. Checks the tag is `vYYYY.MM.DD.BBBB` and equals `ModuleVersion`.
+3. Clones each component at its latest GitHub release beside this repository.
+4. Installs NSIS and runs `tools/build-suite-installer.ps1 -SuiteVersion <version> -AllowUnpublished app-packager-suite`. The build stages the payload in a new folder under the runner's temp path, so the checkout stays clean for the release guard.
+5. Builds `AppPackagerSuite-<version>.zip` with `git archive`, excluding `Tests`, `*.Tests.ps1`, `.github` and this file.
+6. Signs the installer with Azure Artifact Signing (`signalridgelabs` / `SRL-Public`) through the `release` environment's federated credential, then verifies the signature is valid, from `CN=Jason Ulbright`, and timestamped.
+7. Writes `checksums.txt` (`<sha256>  <name>`, two spaces) and creates a **draft** release titled with the tag, notes = changelog entry + `Full changelog: CHANGELOG.md`. The `headline` input is used only when the changelog entry has no `##` headline.
 
 The `release` environment holds `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`. The Entra app's federated credential must trust the subject GitHub sends for this repository:
 

@@ -195,12 +195,111 @@ Describe 'Start-SuiteUpdateInstaller' {
         $text | Should -Match 'Wait-Process -Id 4242 -Timeout 120'
         $text | Should -Match "Start-Process -FilePath 'C:\\.*Suite Setup''s\.exe' -ArgumentList '/S' -PassThru -Wait"
         $text | Should -Match "if \(\`$p\.ExitCode -eq 0\) \{ Start-Process -FilePath 'powershell\.exe' .*start-suite\.ps1"
-        $script:Started | Should -Contain $bootstrap
+        $script:Started | Should -Contain ('"' + $bootstrap + '"')
         $script:Started | Should -Contain 'Hidden'
         Remove-Item -LiteralPath $bootstrap -Force -ErrorAction SilentlyContinue
     }
 
     It 'refuses a missing installer' {
         { Start-SuiteUpdateInstaller -InstallerPath (Join-Path $TestDrive 'missing.exe') } | Should -Throw '*not found*'
+    }
+}
+
+
+Describe 'ConvertTo-SuiteNativeArgument' {
+    BeforeAll {
+        Add-Type -Namespace SuiteTest -Name Shell32 -MemberDefinition @'
+[DllImport("shell32.dll", SetLastError = true)]
+public static extern System.IntPtr CommandLineToArgvW([System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)] string commandLine, out int argc);
+[DllImport("kernel32.dll")]
+public static extern System.IntPtr LocalFree(System.IntPtr mem);
+'@
+
+        # Splits a command line the way a native program's startup code does.
+        function Split-CommandLine {
+            param([string]$CommandLine)
+            $count = 0
+            $ptr = [SuiteTest.Shell32]::CommandLineToArgvW($CommandLine, [ref]$count)
+            try {
+                $result = @()
+                for ($i = 0; $i -lt $count; $i++) {
+                    $result += [Runtime.InteropServices.Marshal]::PtrToStringUni([Runtime.InteropServices.Marshal]::ReadIntPtr($ptr, $i * [IntPtr]::Size))
+                }
+                return , $result
+            }
+            finally { [void][SuiteTest.Shell32]::LocalFree($ptr) }
+        }
+    }
+
+    It 'survives the native command-line split for <Name>' -ForEach @(
+        @{ Name = 'a plain path';              Value = 'C:\Tools\start-suite.ps1' }
+        @{ Name = 'a path with spaces';        Value = 'C:\Program Files\App Packager Suite\start-suite.ps1' }
+        @{ Name = 'a trailing backslash';      Value = 'C:\Users\Some One\Temp\' }
+        @{ Name = 'a doubled trailing slash';  Value = 'C:\Some One\Temp\\' }
+        @{ Name = 'a quote after backslashes'; Value = 'C:\a b\"c\\"d' }
+        @{ Name = 'an apostrophe';             Value = "C:\Jason's Tools\x.ps1" }
+        @{ Name = 'an empty string';           Value = '' }
+    ) {
+        $quoted = InModuleScope SuiteCommon -Parameters @{ V = $Value } { ConvertTo-SuiteNativeArgument -Value $V }
+        $parsed = Split-CommandLine -CommandLine ('prog.exe -File ' + $quoted + ' tail')
+        $parsed.Count | Should -Be 4
+        $parsed[2] | Should -Be $Value
+        $parsed[3] | Should -Be 'tail'
+    }
+}
+
+Describe 'Start-SuiteUpdateInstaller with a real child process' {
+    BeforeAll {
+        $script:OrigTmp = $env:TMP
+        $script:OrigTemp = $env:TEMP
+        $script:Spaced = Join-Path $TestDrive 'spaced temp dir'
+        $script:RelaunchDir = Join-Path $TestDrive 'relaunch dir'
+        $script:InstallerDir = Join-Path $TestDrive 'fake installer'
+        New-Item -ItemType Directory -Path $script:Spaced, $script:RelaunchDir, $script:InstallerDir -Force | Out-Null
+
+        $script:SetupMarker = Join-Path $script:InstallerDir 'setup-args.txt'
+        $script:RelaunchMarker = Join-Path $script:RelaunchDir 'relaunch-argv.txt'
+        $script:FakeSetup = Join-Path $script:InstallerDir 'SuiteSetup-fake.cmd'
+        Set-Content -LiteralPath $script:FakeSetup -Value ('@echo off' + "`r`n" + 'echo %* > "' + $script:SetupMarker + '"' + "`r`n" + 'exit /b 0') -Encoding ASCII
+        $script:Relaunch = Join-Path $script:RelaunchDir 'start-suite.ps1'
+        Set-Content -LiteralPath $script:Relaunch -Encoding ASCII -Value @(
+            '$lines = [Environment]::GetCommandLineArgs()'
+            ('Set-Content -LiteralPath ''' + $script:RelaunchMarker + ''' -Value $lines -Encoding ASCII')
+        )
+
+        # A process id that has already exited, so the bootstrap's wait ends at once.
+        $done = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', 'exit 0' -PassThru -WindowStyle Hidden
+        $done.WaitForExit()
+        $script:GonePid = $done.Id
+
+        $env:TMP = $script:Spaced
+        $env:TEMP = $script:Spaced
+        try { $script:Bootstrap = Start-SuiteUpdateInstaller -InstallerPath $script:FakeSetup -WaitForProcessId $script:GonePid -Relaunch $script:Relaunch }
+        finally { $env:TMP = $script:OrigTmp; $env:TEMP = $script:OrigTemp }
+
+        $deadline = (Get-Date).AddSeconds(90)
+        while (-not (Test-Path -LiteralPath $script:RelaunchMarker) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 300 }
+    }
+
+    AfterAll {
+        $env:TMP = $script:OrigTmp
+        $env:TEMP = $script:OrigTemp
+        if ($script:Bootstrap) { Remove-Item -LiteralPath $script:Bootstrap -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'writes the bootstrap into the spaced temp folder' {
+        $script:Bootstrap | Should -BeLike ($script:Spaced + '\*')
+    }
+
+    It 'runs the bootstrap that was started from a spaced path' {
+        Test-Path -LiteralPath $script:SetupMarker | Should -BeTrue
+        (Get-Content -LiteralPath $script:SetupMarker -Raw).Trim() | Should -Be '/S'
+    }
+
+    It 'relaunches the script from a spaced folder as one argument' {
+        Test-Path -LiteralPath $script:RelaunchMarker | Should -BeTrue
+        $argv = @(Get-Content -LiteralPath $script:RelaunchMarker)
+        $argv | Should -Contain $script:Relaunch
+        $argv | Should -Contain '-File'
     }
 }
