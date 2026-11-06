@@ -52,7 +52,7 @@ configuration. The launcher embeds no tools and hosts no plugins.
 
 `installer\suite.nsi` builds `SuiteSetup-<version>.exe`, a single
 installer carrying every suite tool plus this repository (the launcher
-and `SuiteCommon`). Eleven components ship:
+and `SuiteCommon`). Thirteen components ship:
 
 | Component | Folder | Entry script |
 | --- | --- | --- |
@@ -67,6 +67,8 @@ and `SuiteCommon`). Eleven components ship:
 | Installer Analysis | `installer-analysis\` | `start-installeranalysis.ps1` |
 | Maintenance Window Manager | `maintenance-window-manager\` | `start-maintenancewindowmgr.ps1` |
 | Pivots and Scripts | `pivots-and-scripts\` | `start-pivotsandscripts.ps1` |
+| Update Planner | `update-planner\` | `start-updateplanner.ps1` |
+| Device Inspector | `device-inspector\` | `start-deviceinspector.ps1` |
 
 The component list lives in one table in
 `tools\build-suite-installer.ps1`. That table drives staging, the

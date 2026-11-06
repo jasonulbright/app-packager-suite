@@ -89,6 +89,8 @@ $Components = @(
     [pscustomobject]@{ Folder = 'installer-analysis';               Repo = 'installer-analysis';                Entry = 'start-installeranalysis.ps1';    Shortcut = 'Installer Analysis';                VersionSource = 'Changelog'; VersionFile = 'CHANGELOG.md' }
     [pscustomobject]@{ Folder = 'maintenance-window-manager';       Repo = 'maintenance-window-manager';        Entry = 'start-maintenancewindowmgr.ps1'; Shortcut = 'Maintenance Window Manager';        VersionSource = 'Changelog'; VersionFile = 'CHANGELOG.md' }
     [pscustomobject]@{ Folder = 'pivots-and-scripts';               Repo = 'pivots-and-scripts';                Entry = 'start-pivotsandscripts.ps1';     Shortcut = 'Pivots and Scripts';                VersionSource = 'Changelog'; VersionFile = 'CHANGELOG.md' }
+    [pscustomobject]@{ Folder = 'update-planner';                   Repo = 'update-planner';                    Entry = 'start-updateplanner.ps1';        Shortcut = 'Update Planner';                    VersionSource = 'Changelog'; VersionFile = 'CHANGELOG.md' }
+    [pscustomobject]@{ Folder = 'device-inspector';                 Repo = 'device-inspector';                  Entry = 'start-deviceinspector.ps1';      Shortcut = 'Device Inspector';                  VersionSource = 'Changelog'; VersionFile = 'CHANGELOG.md' }
 )
 
 # Install-root subfolders that changed name. An upgrade moves the old folder,

@@ -3,7 +3,7 @@
 <#
 .SYNOPSIS
     Tests the release guard of tools\build-suite-installer.ps1 against a
-    fixture of eleven tiny git repositories, and checks the release workflow
+    fixture of thirteen tiny git repositories, and checks the release workflow
     runs the tests before it builds.
 
 .DESCRIPTION
@@ -83,7 +83,7 @@ Describe 'build-suite-installer.ps1 release guard' {
     It 'accepts a clean clone that has no ignore rules for build output' {
         $result = Invoke-FixtureBuild -Root $script:Fixture
         $result.Output | Should -Not -Match 'uncommitted change'
-        $result.Output | Should -Match 'All 11 components are at their latest release'
+        $result.Output | Should -Match 'All 13 components are at their latest release'
         $result.ExitCode | Should -Be 0
     }
 
