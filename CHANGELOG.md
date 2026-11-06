@@ -6,7 +6,7 @@
 
 ### Installer
 
-- Carry Update Planner 2026.11.06.0003 and Device Inspector 2026.11.06.0003. Both read the site with the ConfigurationManager cmdlets and need the Configuration Manager console; the other nine components are unchanged.
+- Carry Update Planner 2026.11.06.0003 and Device Inspector 2026.11.06.0003. Both read the site with the ConfigurationManager cmdlets and need the Configuration Manager console; the other eight components are unchanged.
 
 ## [2026.11.06.0073] - 2026-11-06
 
@@ -223,7 +223,7 @@
 
 ### Installer
 
-- Carries App Packager 2026.10.11.0110 with the 0050 shared module version; the other nine components are unchanged.
+- Carries App Packager 2026.10.11.0110 with the 0050 shared module version; the other eight components are unchanged.
 - Show the suite icon on the setup, the uninstaller and the launcher shortcut.
 
 ## [2026.10.07.0049] - 2026-10-07
@@ -288,35 +288,35 @@
 
 ### Installer
 
-- Carry app-packager 2026.10.01.0102 with the Options crash fix; the other nine components are unchanged.
+- Carry app-packager 2026.10.01.0102 with the Options crash fix; the other eight components are unchanged.
 ## [2026.10.01.0042] - 2026-10-01
 
 ## 1 of 10 components refreshed
 
 ### Installer
 
-- Carry app-packager 2026.10.01.0101 with PyCharm 2026; the other nine components are unchanged.
+- Carry app-packager 2026.10.01.0101 with PyCharm 2026; the other eight components are unchanged.
 ## [2026.09.30.0041] - 2026-09-30
 
 ## 1 of 10 components refreshed
 
 ### Installer
 
-- Carry app-packager 2026.09.30.0100 with the multilingual Adobe Acrobat Reader; the other nine components are unchanged.
+- Carry app-packager 2026.09.30.0100 with the multilingual Adobe Acrobat Reader; the other eight components are unchanged.
 ## [2026.09.30.0040] - 2026-09-30
 
 ## 1 of 10 components refreshed
 
 ### Installer
 
-- Carry app-packager 2026.09.30.0099 with the One Click plan, run and report; the other nine components are unchanged.
+- Carry app-packager 2026.09.30.0099 with the One Click plan, run and report; the other eight components are unchanged.
 ## [2026.09.30.0039] - 2026-09-30
 
 ## 1 of 10 components refreshed
 
 ### Installer
 
-- Carry app-packager 2026.09.30.0098; the other nine components are unchanged.
+- Carry app-packager 2026.09.30.0098; the other eight components are unchanged.
 ## [2026.09.30.0038] - 2026-09-30
 
 ## 3 of 10 components refreshed
@@ -333,7 +333,7 @@
 
 ### Installer
 
-- Carry deployment-helper 2026.09.27.0011 with ring deployments; the other nine components are unchanged.
+- Carry deployment-helper 2026.09.27.0011 with ring deployments; the other eight components are unchanged.
 
 ## [2026.09.25.0036] - 2026-09-25
 
@@ -341,7 +341,7 @@
 
 ### Installer
 
-- Carry app-packager 2026.09.25.0096; the other nine components are unchanged.
+- Carry app-packager 2026.09.25.0096; the other eight components are unchanged.
 
 ## [2026.09.25.0035] - 2026-09-25
 
@@ -349,7 +349,7 @@
 
 ### Installer
 
-- Carry app-packager 2026.09.25.0095; the other nine components are unchanged.
+- Carry app-packager 2026.09.25.0095; the other eight components are unchanged.
 
 ## [2026.09.25.0034] - 2026-09-25
 
@@ -357,7 +357,7 @@
 
 ### Installer
 
-- Carry app-packager 2026.09.25.0094; the other nine components are unchanged.
+- Carry app-packager 2026.09.25.0094; the other eight components are unchanged.
 
 ## [2026.09.25.0033] - 2026-09-25
 
