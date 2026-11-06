@@ -39,6 +39,8 @@ $script:ToolRegistry = @(
     @{ Folder = 'collection-and-compliance-manager'; Name = 'Collection + Compliance'; Script = 'start-ccm.ps1' }
     @{ Folder = 'site-hygiene';                      Name = 'Site Hygiene';            Script = 'start-sitehygiene.ps1' }
     @{ Folder = 'pivots-and-scripts';                Name = 'Pivots and Scripts';      Script = 'start-pivotsandscripts.ps1' }
+    @{ Folder = 'update-planner';                    Name = 'Update Planner';          Script = 'start-updateplanner.ps1' }
+    @{ Folder = 'device-inspector';                  Name = 'Device Inspector';        Script = 'start-deviceinspector.ps1' }
 )
 
 function Get-SuiteToolsRoot {
