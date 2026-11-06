@@ -1,12 +1,12 @@
 # Changelog
 
-## [2026.11.06.0071] - 2026-11-06
+## [2026.11.06.0073] - 2026-11-06
 
 ## 2 new tools in the suite
 
 ### Installer
 
-- Add Update Planner 2026.11.06.0001 and Device Inspector 2026.11.06.0001; the other ten components are unchanged.
+- Add Update Planner 2026.11.06.0001 and Device Inspector 2026.11.06.0001; the other eleven components are unchanged.
 
 ## [2026.11.06.0072] - 2026-11-06
 
