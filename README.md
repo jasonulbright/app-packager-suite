@@ -70,7 +70,7 @@ and `SuiteCommon`). Thirteen components ship:
 | Update Planner | `update-planner\` | `start-updateplanner.ps1` |
 | Device Inspector | `device-inspector\` | `start-deviceinspector.ps1` |
 
-Update Planner builds a wave plan for software update rollouts and can create the deployments behind an Enable actions switch. Device Inspector shows the facts of one device from the site and from the device in read-only panels.
+Update Planner builds a wave plan for software update rollouts and can create the deployments behind an Enable actions switch. Device Inspector shows the facts of one device from the site and from the device in read-only panels. Both read the site with the ConfigurationManager cmdlets and need the Configuration Manager console on the computer.
 
 The component list lives in one table in
 `tools\build-suite-installer.ps1`. That table drives staging, the
