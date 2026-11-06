@@ -14,7 +14,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.11.05.0129; the other eleven components are unchanged.
+- Carry App Packager 2026.11.05.0129; the other ten components are unchanged.
 
 ## [2026.11.05.0071] - 2026-11-05
 
@@ -22,7 +22,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.11.05.0128; the other eleven components are unchanged.
+- Carry App Packager 2026.11.05.0128; the other ten components are unchanged.
 
 ## [2026.11.05.0070] - 2026-11-05
 
@@ -30,7 +30,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.11.05.0127; the other eleven components are unchanged.
+- Carry App Packager 2026.11.05.0127; the other ten components are unchanged.
 
 ## [2026.11.05.0069] - 2026-11-05
 
@@ -38,7 +38,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.11.05.0126; the other eleven components are unchanged.
+- Carry App Packager 2026.11.05.0126; the other ten components are unchanged.
 
 ## [2026.11.05.0068] - 2026-11-05
 
@@ -46,7 +46,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.11.05.0125; the other eleven components are unchanged.
+- Carry App Packager 2026.11.05.0125; the other ten components are unchanged.
 
 ## [2026.11.04.0067] - 2026-11-04
 
@@ -54,7 +54,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.11.04.0124; the other eleven components are unchanged.
+- Carry App Packager 2026.11.04.0124; the other ten components are unchanged.
 
 ## [2026.10.29.0066] - 2026-10-29
 
@@ -62,7 +62,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.10.29.0123; the other eleven components are unchanged.
+- Carry App Packager 2026.10.29.0123; the other ten components are unchanged.
 
 ## [2026.10.25.0065] - 2026-10-25
 
@@ -93,7 +93,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.10.20.0121; the other eleven components are unchanged.
+- Carry App Packager 2026.10.20.0121; the other ten components are unchanged.
 
 ## [2026.10.18.0063] - 2026-10-18
 
@@ -101,7 +101,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.10.18.0120; the other eleven components are unchanged.
+- Carry App Packager 2026.10.18.0120; the other ten components are unchanged.
 
 ## [2026.10.17.0062] - 2026-10-17
 
@@ -109,7 +109,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.10.17.0119; the other eleven components are unchanged.
+- Carry App Packager 2026.10.17.0119; the other ten components are unchanged.
 
 ## [2026.10.14.0061] - 2026-10-14
 
@@ -117,7 +117,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.10.14.0118; the other eleven components are unchanged.
+- Carry App Packager 2026.10.14.0118; the other ten components are unchanged.
 
 ## [2026.10.12.0060] - 2026-10-12
 
@@ -125,7 +125,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.10.12.0117; the other eleven components are unchanged.
+- Carry App Packager 2026.10.12.0117; the other ten components are unchanged.
 
 ## [2026.10.12.0059] - 2026-10-12
 
@@ -133,7 +133,7 @@
 
 ### Installer
 
-- Carry Deployment Helper 2026.10.12.0017; the other eleven components are unchanged.
+- Carry Deployment Helper 2026.10.12.0017; the other ten components are unchanged.
 
 ## [2026.10.12.0058] - 2026-10-12
 
@@ -149,7 +149,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.10.11.0115; the other eleven components are unchanged.
+- Carry App Packager 2026.10.11.0115; the other ten components are unchanged.
 
 ## [2026.10.11.0056] - 2026-10-11
 
@@ -157,7 +157,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.10.11.0114; the other eleven components are unchanged.
+- Carry App Packager 2026.10.11.0114; the other ten components are unchanged.
 
 ## [2026.10.11.0055] - 2026-10-11
 
@@ -165,7 +165,7 @@
 
 ### Installer
 
-- Carry App Packager 2026.10.11.0113; the other eleven components are unchanged.
+- Carry App Packager 2026.10.11.0113; the other ten components are unchanged.
 
 ## [2026.10.11.0054] - 2026-10-11
 
@@ -415,7 +415,7 @@
 
 ### Installer
 
-- Carry app-packager 2026.09.18.0090 and site-hygiene 2026.09.18.0014; the other eleven components are unchanged.
+- Carry app-packager 2026.09.18.0090 and site-hygiene 2026.09.18.0014; the other ten components are unchanged.
 
 ## [0.5.5] - 2026-09-18
 
@@ -475,7 +475,7 @@
 
 ### Installer
 
-- Carry app-packager 1.5.2.2 and installer-analysis 1.3.4.0; the other eleven components are unchanged.
+- Carry app-packager 1.5.2.2 and installer-analysis 1.3.4.0; the other ten components are unchanged.
 
 ## [0.4.14] - 2026-09-09
 
@@ -517,7 +517,7 @@
 
 ### Installer
 
-- Carry app-packager 1.5.1.5 and installer-analysis 1.3.3.0; the other eleven components are unchanged.
+- Carry app-packager 1.5.1.5 and installer-analysis 1.3.3.0; the other ten components are unchanged.
 
 ## [0.4.7] - 2026-09-04
 
