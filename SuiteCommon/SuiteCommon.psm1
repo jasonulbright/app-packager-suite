@@ -558,17 +558,23 @@ function Read-SuiteSettings {
         [Parameter(Mandatory)][hashtable]$Defaults
     )
 
+    # Never use .Keys / .Values / .Count on a settings hashtable: a setting
+    # with that name makes the dot access return the setting's value, not the
+    # collection. GetEnumerator() and the indexer are not shadowed.
     $settings = @{}
-    foreach ($k in $Defaults.Keys) { $settings[$k] = $Defaults[$k] }
+    foreach ($entry in $Defaults.GetEnumerator()) { $settings[$entry.Key] = $entry.Value }
 
     if (Test-Path -LiteralPath $Path) {
         try {
             # -Encoding UTF8: on 5.1 the default decoder mangles non-ASCII in
             # BOM-less UTF-8 files (hand-edited settings) without any error.
             $loaded = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-            foreach ($k in @($settings.Keys)) {
-                $val = $loaded.$k
-                if ($null -ne $val) { $settings[$k] = $val }
+            # PSObject.Properties reads only real JSON properties. A dot access
+            # such as $loaded.Count returns 1 on PowerShell 7 when the file has
+            # no such property.
+            foreach ($k in @($Defaults.GetEnumerator() | ForEach-Object { $_.Key })) {
+                $prop = $loaded.PSObject.Properties[$k]
+                if ($prop -and $null -ne $prop.Value) { $settings[$k] = $prop.Value }
             }
         } catch { $null = $_ }
     }
