@@ -6,7 +6,7 @@
 
 ### Installer
 
-- Carry Update Planner 2026.11.06.0003 and Device Inspector 2026.11.06.0003. Both read the site with the ConfigurationManager cmdlets and need the Configuration Manager console; the other eight components are unchanged.
+- Carry Update Planner 2026.11.06.0003 and Device Inspector 2026.11.06.0003. Both read the site with the ConfigurationManager cmdlets and need the Configuration Manager console; the other eleven components are unchanged.
 
 ## [2026.11.06.0073] - 2026-11-06
 
