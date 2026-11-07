@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026.11.07.0075] - 2026-11-07
+
+## Settings fix in SuiteCommon
+
+### Fixed
+
+- `Read-SuiteSettings` returned no value for a setting named `Keys`. The function read `$Defaults.Keys`, and a hashtable that holds a key named `Keys` returns that key's value instead of its key list. The function now uses `GetEnumerator()`.
+- `Read-SuiteSettings` returned 1 for a missing setting named `Count` or `Length` on PowerShell 7. The function now reads only real JSON properties.
+- New tests cover the setting names `Keys`, `Values`, `Count` and `Length`.
+
 ## [2026.11.06.0074] - 2026-11-06
 
 ## 2 components refreshed
