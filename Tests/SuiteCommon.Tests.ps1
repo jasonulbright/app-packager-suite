@@ -177,6 +177,53 @@ Describe 'Read-SuiteSettings' {
         $s = Read-SuiteSettings -Path $p -Defaults @{ SiteCode = '' }
         $s.SiteCode | Should -Be 'Zoë'
     }
+
+    # A hashtable member access with a key of the same name returns the key's
+    # value, not the member (.Keys, .Values, .Count).
+    It 'reads a setting named <Name>' -ForEach @(
+        @{ Name = 'Keys';   Saved = @('a', 'b') }
+        @{ Name = 'Values'; Saved = @('c', 'd') }
+        @{ Name = 'Count';  Saved = 7 }
+    ) {
+        $p = Join-Path $TestDrive "reserved-$Name.json"
+        $json = @{ $Name = $Saved; Other = 'file' } | ConvertTo-Json
+        Set-Content -LiteralPath $p -Value $json -Encoding UTF8
+        $defaults = @{ $Name = $null; Other = 'default' }
+        $s = Read-SuiteSettings -Path $p -Defaults $defaults
+        @($s[$Name]) | Should -Be @($Saved)
+        $s['Other'] | Should -Be 'file'
+    }
+
+    It 'keeps every default when the defaults declare Keys, Values and Count' {
+        $s = Read-SuiteSettings -Path (Join-Path $TestDrive 'missing-reserved.json') -Defaults @{ Keys = 'k'; Values = 'v'; Count = 3; Plain = 'p' }
+        $s['Keys']   | Should -Be 'k'
+        $s['Values'] | Should -Be 'v'
+        $s['Count']  | Should -Be 3
+        $s['Plain']  | Should -Be 'p'
+    }
+
+    It 'keeps the default for <Name> when the file does not have it' -ForEach @(
+        @{ Name = 'Keys';   Default = 'dk' }
+        @{ Name = 'Values'; Default = 'dv' }
+        @{ Name = 'Count';  Default = 0 }
+        @{ Name = 'Length'; Default = 0 }
+    ) {
+        $p = Join-Path $TestDrive "absent-$Name.json"
+        Set-Content -LiteralPath $p -Value '{ "Other": "file" }' -Encoding UTF8
+        $s = Read-SuiteSettings -Path $p -Defaults @{ $Name = $Default; Other = 'default' }
+        $s[$Name] | Should -Be $Default
+    }
+
+    It 'round-trips settings named Keys, Values and Count' {
+        $p = Join-Path $TestDrive 'roundtrip-reserved.json'
+        $ok = Save-SuiteSettings -Path $p -Settings @{ Keys = @('x', 'y'); Values = 'v'; Count = 2; Plain = 'p' }
+        $ok | Should -BeTrue
+        $s = Read-SuiteSettings -Path $p -Defaults @{ Keys = @(); Values = ''; Count = 0; Plain = '' }
+        @($s['Keys']) | Should -Be @('x', 'y')
+        $s['Values']  | Should -Be 'v'
+        $s['Count']   | Should -Be 2
+        $s['Plain']   | Should -Be 'p'
+    }
 }
 
 Describe 'Save-SuiteSettings' {
