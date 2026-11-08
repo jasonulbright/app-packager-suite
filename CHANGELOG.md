@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026.11.08.0076] - 2026-11-08
+
+## 1 documentation count corrected
+
+### Fixed
+
+- Corrected the README Start Menu description: twelve tool shortcuts plus the launcher shortcut.
+
 ## [2026.11.07.0075] - 2026-11-07
 
 ## Settings fix in SuiteCommon
