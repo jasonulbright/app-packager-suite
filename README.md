@@ -105,7 +105,7 @@ What the installer does:
   `%LOCALAPPDATA%\AppPackagerSuite\update-check.json`. A plain checkout
   (no `suite-manifest.json`) never checks.
 - **Creates a start-menu group, "AppPackager Suite"**, with a shortcut
-  for each of the nine tools and one for the launcher, which carries the
+  for each of the twelve tools and one for the launcher, which carries the
   suite icon. Each shortcut runs
   `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <entry>.ps1`,
   so the tools start regardless of the machine's execution policy without
