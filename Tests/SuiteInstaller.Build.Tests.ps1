@@ -152,3 +152,34 @@ Describe 'release.yml test gate' {
         $script:Workflow | Should -Match '(?s)\n  build:\r?\n    needs: \[test-powershell, test-pwsh\]\r?\n'
     }
 }
+
+Describe 'Remove-TestArtifact payload strip' {
+    BeforeAll {
+        $buildAst = [System.Management.Automation.Language.Parser]::ParseFile($script:BuildScript, [ref]$null, [ref]$null)
+        $fn = $buildAst.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Remove-TestArtifact' }, $true)
+        . ([scriptblock]::Create($fn.Extent.Text))
+        $script:Payload = Join-Path ([IO.Path]::GetTempPath()) ('strip-' + [Guid]::NewGuid().ToString('N'))
+        foreach ($d in 'docs\images', 'screenshots', '.github\workflows', 'Tests', 'Lib', 'Module\docs') {
+            New-Item -ItemType Directory -Path (Join-Path $script:Payload $d) -Force | Out-Null
+        }
+        foreach ($f in 'docs\images\a.png', 'screenshots\b.png', 'screenshot.png', '.github\workflows\c.yml', '.coderabbit.yaml', 'Invoke-Checks.ps1', 'RELEASING.md', 'Tests\x.ps1', 'Lib\keep.dll', 'Module\docs\keep.txt', 'start-tool.ps1', 'README.md') {
+            Set-Content -LiteralPath (Join-Path $script:Payload $f) -Value 'x'
+        }
+        $script:Removed = Remove-TestArtifact -Root $script:Payload
+    }
+    AfterAll { Remove-Item -LiteralPath $script:Payload -Recurse -Force -ErrorAction SilentlyContinue }
+
+    It 'removes the root-level docs, screenshots and repository tooling' {
+        foreach ($n in 'docs', 'screenshots', 'screenshot.png', '.github', '.coderabbit.yaml', 'Invoke-Checks.ps1', 'RELEASING.md', 'Tests') {
+            Test-Path -LiteralPath (Join-Path $script:Payload $n) | Should -BeFalse -Because $n
+        }
+    }
+    It 'keeps the files that run, and a docs folder below the component root' {
+        foreach ($n in 'Lib\keep.dll', 'Module\docs\keep.txt', 'start-tool.ps1', 'README.md') {
+            Test-Path -LiteralPath (Join-Path $script:Payload $n) | Should -BeTrue -Because $n
+        }
+    }
+    It 'counts every removed file' {
+        $script:Removed | Should -Be 8
+    }
+}

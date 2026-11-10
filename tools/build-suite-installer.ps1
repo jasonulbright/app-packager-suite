@@ -14,7 +14,9 @@
 
     Test files are stripped from the payload: nothing under a Tests folder and
     no *.Tests.ps1 file reaches a shipped artifact. Each component's
-    RELEASING.md is stripped too.
+    RELEASING.md is stripped too, and so are the root-level docs and
+    screenshots folders, screenshot.png, .github, .coderabbit.yaml and
+    Invoke-Checks.ps1.
 
 .PARAMETER SuiteVersion
     Suite version stamped into the installer, the manifest and the file name.
@@ -210,6 +212,20 @@ function Remove-TestArtifact {
     if (Test-Path -LiteralPath $releasing) {
         Remove-Item -LiteralPath $releasing -Force
         $removed++
+    }
+    # Documentation, screenshots and repository tooling stay in each
+    # component's repository. The installer carries only what runs. Only the
+    # component root is touched: a folder with the same name deeper in the
+    # tree can be runtime content.
+    foreach ($name in @('docs', 'screenshots', 'screenshot.png', '.github', '.coderabbit.yaml', 'Invoke-Checks.ps1')) {
+        $path = Join-Path $Root $name
+        if (Test-Path -LiteralPath $path) {
+            if (Test-Path -LiteralPath $path -PathType Container) {
+                $removed += @(Get-ChildItem -LiteralPath $path -Recurse -File -Force).Count
+            }
+            else { $removed++ }
+            Remove-Item -LiteralPath $path -Recurse -Force
+        }
     }
     return $removed
 }

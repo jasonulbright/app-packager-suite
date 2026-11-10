@@ -1,5 +1,14 @@
 # Changelog
 
+## [2026.11.10.0077] - 2026-11-10
+
+## Smaller installer
+
+### Changed
+
+- The installer payload no longer carries each component's `docs` and `screenshots` folders, `screenshot.png`, `.github`, `.coderabbit.yaml` or `Invoke-Checks.ps1`. Release 0075 added the component user guides to the payload, and the installer grew from 5.2 MB to 24.2 MB, mostly screenshots. The guides stay in the component repositories. Only the component root is stripped.
+- New tests cover the strip.
+
 ## [2026.11.08.0076] - 2026-11-08
 
 ## 1 documentation count corrected
