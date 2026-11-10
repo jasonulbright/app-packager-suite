@@ -1,4 +1,5 @@
 # Changelog
+
 ## [2026.11.10.0078] - 2026-11-10
 
 ## 2 components refreshed
