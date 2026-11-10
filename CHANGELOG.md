@@ -1,4 +1,12 @@
 # Changelog
+## [2026.11.10.0078] - 2026-11-10
+
+## 2 components refreshed
+
+### Installer
+
+- Carry Update Planner 2026.11.10.0005 and Device Inspector 2026.11.10.0005. The other ten components are unchanged.
+- Update Planner and Device Inspector: Options message boxes show the app name, contrast of disabled controls and tab headers is fixed, a local SMS Provider or site server no longer gets a credential, and the user guides are corrected.
 
 ## [2026.11.10.0077] - 2026-11-10
 
