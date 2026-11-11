@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026.11.11.0080] - 2026-11-11
+
+## 1 component refreshed
+
+### Installer
+
+- Carry Device Inspector 2026.11.11.0010. The other eleven components are unchanged.
+- Device Inspector 0010: show the site inventory scan time as the Last hardware inventory fact, labelled as device local time.
+- Device Inspector 0010: name the source of the fact in the JSON export.
+
 ## [2026.11.11.0079] - 2026-11-11
 
 ## 3 components refreshed
