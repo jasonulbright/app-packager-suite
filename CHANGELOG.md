@@ -1,5 +1,25 @@
 # Changelog
 
+## [2026.11.11.0079] - 2026-11-11
+
+## 3 components refreshed
+
+### Installer
+
+- Carry App Packager 2026.11.11.0132, Deployment Helper 2026.11.11.0020 and Device Inspector 2026.11.11.0009. The other nine components are unchanged.
+- App Packager 0130: show the full header of every dialog grid column, and widen the Options window.
+- App Packager 0131: fix theme colors of buttons, selected list items and disabled fields; dim the title bar of an unfocused dialog; wrap the Workbench action buttons.
+- App Packager 0132: no change in the installer. The release adds repository checks only.
+- Deployment Helper 0019 and 0020: no change in the installer. The releases add a user guide and repository checks, which the installer does not carry.
+- Device Inspector 0006: add nine device and site actions, each with a dry run and an action log, behind an Enable actions switch.
+- Device Inspector 0006: add a device list search, a collection browser, and collection membership rules in the report.
+- Device Inspector 0007: show the uninstall keys of a device live, and uninstall or repair from the key.
+- Device Inspector 0007: filter the Applications panel by type, and remove the Status column.
+- Device Inspector 0008: run each action in a background task, with one running action for each device.
+- Device Inspector 0008: list the running actions, and warn when the window closes while actions run.
+- Device Inspector 0009: end the process after Close anyway, and fix the close warning text.
+- Device Inspector 0009: show the version once in the Uninstall and Repair confirmation.
+
 ## [2026.11.10.0078] - 2026-11-10
 
 ## 2 components refreshed
