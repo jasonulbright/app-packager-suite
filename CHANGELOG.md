@@ -1,5 +1,17 @@
 # Changelog
 
+## [2026.11.12.0081] - 2026-11-12
+
+## 1 component refreshed
+
+### Installer
+
+- Carry App Packager 2026.11.12.0133. The other eleven components are unchanged.
+- App Packager 0133: rebuild the CVE lookup on full NVD product records; correct 21 CPE names.
+- Raise the dark button border to 3:1 and test the state contrast pairs.
+- Bold the field titles of site code and provider, not their values.
+- Fix light theme white text on blue boxes; bold 14 pt site code and provider.
+
 ## [2026.11.11.0080] - 2026-11-11
 
 ## 1 component refreshed
