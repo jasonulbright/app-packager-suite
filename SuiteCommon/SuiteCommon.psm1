@@ -947,7 +947,7 @@ function Initialize-SuiteTheme {
         TitleBarActive    = $bc.ConvertFrom('#0078D4')
         TitleBarInactive  = $bc.ConvertFrom('#4BA3E0')
         DarkButtonBg      = $bc.ConvertFrom('#1E1E1E')
-        DarkButtonBorder  = $bc.ConvertFrom('#555555')
+        DarkButtonBorder  = $bc.ConvertFrom('#8C8C8C')
         DarkActiveBg      = $bc.ConvertFrom('#3A3A3A')
         DarkActiveBorder  = $bc.ConvertFrom('#F9F9F9')
         LightWfBg         = $bc.ConvertFrom('#0078D4')
