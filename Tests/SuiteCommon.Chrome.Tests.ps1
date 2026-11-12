@@ -212,3 +212,106 @@ Describe 'Suite theme context' {
         $btn.Background.ToString() | Should -Be '#FF3A3A3A' -Because 'getter must see the updated caller-scope value'
     }
 }
+
+Describe 'Suite theme: white text on every blue box in light mode' {
+
+    BeforeAll {
+        function New-FontFake {
+            param([double]$Size)
+            [pscustomobject]@{ Background = $null; BorderBrush = $null; BorderThickness = $null; Foreground = $null
+                FontSize = $Size; FontWeight = [System.Windows.FontWeights]::Normal; FontStyle = [System.Windows.FontStyles]::Normal
+                FontFamily = 'Segoe UI'; FontStretch = [System.Windows.FontStretches]::Normal; TextDecorations = $null }
+        }
+        function New-ThemeButton { [pscustomobject]@{ Background = $null; BorderBrush = $null; BorderThickness = $null; Foreground = 'unset' } }
+    }
+
+    It 'sets white text on workflow, options, view and options-pane buttons in light mode' {
+        $wf = New-ThemeButton; $opt = New-ThemeButton; $view = New-ThemeButton; $side = New-ThemeButton
+        Initialize-SuiteTheme -Window ([pscustomobject]@{}) -IsDarkGetter { $false } -ActiveViewGetter { 'A' } `
+            -ViewButtons @(@{ Name = 'A'; Button = $view }) -OptionsButton $side -WorkflowButtons @($wf) -OptionsButtons @($opt)
+        Set-ButtonTheme
+        Update-SidebarButtonTheme
+        foreach ($btn in $wf, $opt, $view, $side) { $btn.Foreground.ToString() | Should -Be '#FFFFFFFF' }
+    }
+
+    It 'sets white text for the Border active mode too' {
+        $view = New-ThemeButton
+        Initialize-SuiteTheme -Window ([pscustomobject]@{}) -IsDarkGetter { $false } -ActiveViewGetter { 'A' } `
+            -ViewButtons @(@{ Name = 'A'; Button = $view }) -ActiveMode Border
+        Update-SidebarButtonTheme
+        $view.Foreground.ToString() | Should -Be '#FFFFFFFF'
+    }
+
+    It 'leaves the dark theme text brush to the MahApps theme' {
+        $wf = New-ThemeButton
+        Initialize-SuiteTheme -Window ([pscustomobject]@{}) -IsDarkGetter { $true } -WorkflowButtons @($wf) -OptionsButtons @()
+        Set-ButtonTheme
+        $wf.Foreground | Should -BeNullOrEmpty
+    }
+
+    It 'gives every light-mode blue background at least 4.0:1 contrast against its text brush' {
+        InModuleScope SuiteCommon {
+            Initialize-SuiteTheme -Window ([pscustomobject]@{}) -IsDarkGetter { $false }
+            $b = $script:SuiteTheme.Brushes
+            $blue = @($b.Keys | Where-Object { $_ -like 'Light*Bg' -or $_ -eq 'TitleBarActive' })
+            $blue.Count | Should -BeGreaterThan 2
+            $lum = {
+                param($c)
+                $ch = foreach ($v in $c.R, $c.G, $c.B) { $x = $v / 255.0; if ($x -le 0.03928) { $x / 12.92 } else { [Math]::Pow(($x + 0.055) / 1.055, 2.4) } }
+                0.2126 * $ch[0] + 0.7152 * $ch[1] + 0.0722 * $ch[2]
+            }
+            foreach ($k in $blue) {
+                $l1 = & $lum $b[$k].Color; $l2 = & $lum $b.OnBlue.Color
+                $ratio = ([Math]::Max($l1, $l2) + 0.05) / ([Math]::Min($l1, $l2) + 0.05)
+                $ratio | Should -BeGreaterThan 4.0 -Because "$k must keep white text readable"
+            }
+        }
+    }
+
+    It 'makes the site code and provider boxes at least 14 pt and bold in both themes' {
+        foreach ($dark in $true, $false) {
+            $box = New-Object System.Windows.Controls.TextBox
+            $box.FontSize = 12; $box.FontWeight = [System.Windows.FontWeights]::Normal
+            $win = [pscustomobject]@{ Box = $box }
+            $win | Add-Member -MemberType ScriptMethod -Name FindName -Value { param($n) if ($n -eq 'txtSiteCode') { $this.Box } else { $null } }
+            InModuleScope SuiteCommon -Parameters @{ Win = $win; Dark = $dark } {
+                Set-ConnectionTextTheme -Window $Win -IsDark $Dark
+                $Win.Box.FontSize | Should -BeGreaterOrEqual 14
+                $Win.Box.FontWeight | Should -Be ([System.Windows.FontWeights]::Bold)
+            }
+        }
+    }
+}
+
+Describe 'Suite theme: light and dark differ in colors only' {
+
+    It 'leaves font size, weight, style and decoration identical in both themes' {
+        $props = 'FontSize', 'FontWeight', 'FontStyle', 'FontFamily', 'FontStretch', 'TextDecorations'
+        $snap = @{}
+        foreach ($dark in $true, $false) {
+            $btn  = New-Object System.Windows.Controls.Button
+            $view = New-Object System.Windows.Controls.Button
+            $side = New-Object System.Windows.Controls.Button
+            $box  = New-Object System.Windows.Controls.TextBox
+            $box.FontSize = 12
+            foreach ($c in $btn, $view, $side) { $c.FontSize = 13; $c.FontWeight = [System.Windows.FontWeights]::SemiBold }
+            $label = New-Object System.Windows.Controls.TextBlock
+            $win = [pscustomobject]@{ Box = $box }
+            $win | Add-Member -MemberType ScriptMethod -Name FindName -Value { param($n) if ($n -eq 'txtSiteCode') { $this.Box } else { $null } }
+            $isDark = $dark
+            Initialize-SuiteTheme -Window $win -IsDarkGetter { $isDark }.GetNewClosure() -ActiveViewGetter { 'A' } `
+                -ViewButtons @(@{ Name = 'A'; Button = $view }) -OptionsButton $side -LogLabel $label -WorkflowButtons @($btn) -OptionsButtons @($btn)
+            Set-ButtonTheme
+            Update-SidebarButtonTheme
+            $snap[$dark] = foreach ($c in $btn, $view, $side, $box, $label) { foreach ($p in $props) { '{0}={1}' -f $p, $c.$p } }
+        }
+        ($snap[$false] -join '|') | Should -Be ($snap[$true] -join '|')
+    }
+
+    It 'sets no font property inside a theme branch of the shared theme code' {
+        $src = Get-Content -LiteralPath (Join-Path (Split-Path $PSScriptRoot -Parent) 'SuiteCommon\SuiteCommon.psm1') -Raw
+        $themeCode = [regex]::Match($src, '(?s)function Update-SidebarButtonTheme.*?function Set-DialogTheme').Value
+        $themeCode | Should -Not -BeNullOrEmpty
+        $themeCode | Should -Not -Match '(?i)\$\w+\.(FontSize|FontWeight|FontStyle|TextDecorations)\s*=\s*if\s*\(\s*\$IsDark'
+    }
+}

@@ -958,6 +958,7 @@ function Initialize-SuiteTheme {
         LightOptBorder    = $bc.ConvertFrom('#006CBE')
         LogLabelDark      = $bc.ConvertFrom('#B0B0B0')
         LogLabelLight     = $bc.ConvertFrom('#595959')
+        OnBlue            = $bc.ConvertFrom('#FFFFFF')
     }
     if ($Brushes) { foreach ($k in $Brushes.Keys) { $b[$k] = $Brushes[$k] } }
     $script:SuiteTheme = @{
@@ -1001,6 +1002,40 @@ function Update-TitleBarBrushes {
     }
 }
 
+# Light theme paints buttons blue. A plain MahApps Square button keeps the dark
+# theme text brush there, so the text is black on blue. Every blue-background
+# control gets white text (OnBlue) in light mode and its own brush back in dark mode.
+function Set-ThemeForeground {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Mutates in-window brush properties only.')]
+    param($Control, [bool]$IsDark, $OnBlue)
+    if ($null -eq $Control -or -not $Control.PSObject.Properties['Foreground']) { return }
+    if ($IsDark) {
+        if ($Control -is [System.Windows.DependencyObject]) { $Control.ClearValue([System.Windows.Controls.Control]::ForegroundProperty) }
+        else { $Control.Foreground = $null }
+    }
+    else { $Control.Foreground = $OnBlue }
+}
+
+# The site code and the SMS provider (site server) boxes must read at a glance:
+# body text plus 1 pt or more, bold. The same in light and dark mode: a theme
+# changes colors only, never font size, weight, style or decoration.
+$script:ConnectionBoxNames = @('txtSiteCode', 'txtSmsProvider', 'txtProvider', 'txtSiteServer', 'txtWizSiteCode', 'txtWizProvider')
+$script:ConnectionBoxFontSize = 14.0
+
+function Set-ConnectionTextTheme {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Mutates in-window font properties only.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'IsDark', Justification='Kept so every theme helper takes the same arguments; fonts do not depend on the theme.')]
+    param($Window, [bool]$IsDark)
+    if ($null -eq $Window -or -not $Window.PSObject.Methods['FindName']) { return }
+    foreach ($name in $script:ConnectionBoxNames) {
+        $box = $null
+        try { $box = $Window.FindName($name) } catch { $box = $null }
+        if ($null -eq $box -or -not $box.PSObject.Properties['FontSize']) { continue }
+        $box.FontSize   = [Math]::Max([double]$box.FontSize, $script:ConnectionBoxFontSize)
+        $box.FontWeight = [System.Windows.FontWeights]::Bold
+    }
+}
+
 function Update-SidebarButtonTheme {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Mutates in-window brush properties only.')]
     param(
@@ -1023,6 +1058,7 @@ function Update-SidebarButtonTheme {
             $v.Button.Background      = $bg
             $v.Button.BorderBrush     = if ($v.Name -eq $ActiveView) { $activeBorder } else { $border }
             $v.Button.BorderThickness = $thickness
+            Set-ThemeForeground -Control $v.Button -IsDark $IsDark -OnBlue $b.OnBlue
         }
         $idleBg = $bg
     }
@@ -1036,16 +1072,19 @@ function Update-SidebarButtonTheme {
             $v.Button.Background      = if ($isActive) { $activeBg } else { $idleBg }
             $v.Button.BorderBrush     = $border
             $v.Button.BorderThickness = $thickness
+            Set-ThemeForeground -Control $v.Button -IsDark $IsDark -OnBlue $b.OnBlue
         }
     }
     if ($ctx.OptionsButton) {
         $ctx.OptionsButton.Background      = $idleBg
         $ctx.OptionsButton.BorderBrush     = $border
         $ctx.OptionsButton.BorderThickness = $thickness
+        Set-ThemeForeground -Control $ctx.OptionsButton -IsDark $IsDark -OnBlue $b.OnBlue
     }
     if ($ctx.LogLabel) {
         $ctx.LogLabel.Foreground = if ($IsDark) { $b.LogLabelDark } else { $b.LogLabelLight }
     }
+    Set-ConnectionTextTheme -Window $ctx.Window -IsDark $IsDark
 }
 
 function Set-ButtonTheme {
@@ -1055,15 +1094,16 @@ function Set-ButtonTheme {
     if ($null -eq $IsDark) { $IsDark = [bool](& $ctx.IsDarkGetter) }
     $b = $ctx.Brushes
     if ($IsDark) {
-        foreach ($btn in @($ctx.WorkflowButtons)) { $btn.Background = $b.DarkButtonBg; $btn.BorderBrush = $b.DarkButtonBorder }
-        foreach ($btn in @($ctx.OptionsButtons))  { $btn.Background = $b.DarkButtonBg; $btn.BorderBrush = $b.DarkButtonBorder }
+        foreach ($btn in @($ctx.WorkflowButtons)) { $btn.Background = $b.DarkButtonBg; $btn.BorderBrush = $b.DarkButtonBorder; Set-ThemeForeground -Control $btn -IsDark $true -OnBlue $b.OnBlue }
+        foreach ($btn in @($ctx.OptionsButtons))  { $btn.Background = $b.DarkButtonBg; $btn.BorderBrush = $b.DarkButtonBorder; Set-ThemeForeground -Control $btn -IsDark $true -OnBlue $b.OnBlue }
         if ($ctx.LogLabel) { $ctx.LogLabel.Foreground = $b.LogLabelDark }
     }
     else {
-        foreach ($btn in @($ctx.WorkflowButtons)) { $btn.Background = $b.LightWfBg;  $btn.BorderBrush = $b.LightWfBorder }
-        foreach ($btn in @($ctx.OptionsButtons))  { $btn.Background = $b.LightOptBg; $btn.BorderBrush = $b.LightOptBorder }
+        foreach ($btn in @($ctx.WorkflowButtons)) { $btn.Background = $b.LightWfBg;  $btn.BorderBrush = $b.LightWfBorder; Set-ThemeForeground -Control $btn -IsDark $false -OnBlue $b.OnBlue }
+        foreach ($btn in @($ctx.OptionsButtons))  { $btn.Background = $b.LightOptBg; $btn.BorderBrush = $b.LightOptBorder; Set-ThemeForeground -Control $btn -IsDark $false -OnBlue $b.OnBlue }
         if ($ctx.LogLabel) { $ctx.LogLabel.Foreground = $b.LogLabelLight }
     }
+    Set-ConnectionTextTheme -Window $ctx.Window -IsDark $IsDark
 }
 
 function Set-DialogTheme {
