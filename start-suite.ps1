@@ -148,11 +148,11 @@ $mainXaml = @'
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="SITE" FontSize="11" VerticalAlignment="Center"
+                <TextBlock Grid.Column="0" Text="Site Code" FontSize="12" VerticalAlignment="Center"
                            Foreground="{DynamicResource MahApps.Brushes.Gray1}" Margin="0,0,6,0"/>
                 <TextBox x:Name="txtSiteCode" Grid.Column="1" Width="70" FontSize="12" Padding="6,3,6,3"
                          Controls:TextBoxHelper.Watermark="MCM" VerticalAlignment="Center" Margin="0,0,14,0"/>
-                <TextBlock Grid.Column="2" Text="SMS PROVIDER" FontSize="11" VerticalAlignment="Center"
+                <TextBlock Grid.Column="2" Text="SMS Provider" FontSize="12" VerticalAlignment="Center"
                            Foreground="{DynamicResource MahApps.Brushes.Gray1}" Margin="0,0,6,0"/>
                 <TextBox x:Name="txtProvider" Grid.Column="3" FontSize="12" Padding="6,3,6,3"
                          Controls:TextBoxHelper.Watermark="cm01.contoso.com" VerticalAlignment="Center" Margin="0,0,14,0"/>

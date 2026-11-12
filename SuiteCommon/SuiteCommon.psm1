@@ -1016,11 +1016,40 @@ function Set-ThemeForeground {
     else { $Control.Foreground = $OnBlue }
 }
 
-# The site code and the SMS provider (site server) boxes must read at a glance:
-# body text plus 1 pt or more, bold. The same in light and dark mode: a theme
-# changes colors only, never font size, weight, style or decoration.
+# Field titles are bold; field values stay in the normal body style. The site
+# code and the SMS provider (site server) titles are 14 pt bold. The same in
+# light and dark mode: a theme changes colors only, never font size, weight,
+# style or decoration. The title of a box is the TextBlock or Label next to it:
+# the left neighbour in a Grid row (or the cell above), or the previous child
+# of a StackPanel or DockPanel.
 $script:ConnectionBoxNames = @('txtSiteCode', 'txtSmsProvider', 'txtProvider', 'txtSiteServer', 'txtWizSiteCode', 'txtWizProvider')
-$script:ConnectionBoxFontSize = 14.0
+$script:FieldTitleFontSize = 14.0
+
+function Find-FieldTitle {
+    param($Box)
+    $parent = $null
+    try { $parent = $Box.Parent } catch { $parent = $null }
+    if ($null -eq $parent) { return $null }
+    $isTitle = { param($c) ($c -is [System.Windows.Controls.TextBlock]) -or ($c -is [System.Windows.Controls.Label]) }
+    if ($parent -is [System.Windows.Controls.Grid]) {
+        $row = [System.Windows.Controls.Grid]::GetRow($Box); $col = [System.Windows.Controls.Grid]::GetColumn($Box)
+        $cands = @()
+        foreach ($c in $parent.Children) {
+            if ($c -eq $Box -or -not (& $isTitle $c)) { continue }
+            $r = [System.Windows.Controls.Grid]::GetRow($c); $k = [System.Windows.Controls.Grid]::GetColumn($c)
+            if ($r -eq $row -and $k -lt $col) { $cands += [pscustomobject]@{ E = $c; D = ($col - $k) } }
+            elseif ($k -eq $col -and $r -lt $row) { $cands += [pscustomobject]@{ E = $c; D = 100 + ($row - $r) } }
+        }
+        if ($cands.Count) { return ($cands | Sort-Object D | Select-Object -First 1).E }
+        return $null
+    }
+    if ($parent -is [System.Windows.Controls.Panel]) {
+        $prev = $null
+        foreach ($c in $parent.Children) { if ($c -eq $Box) { break }; $prev = $c }
+        if ($null -ne $prev -and (& $isTitle $prev)) { return $prev }
+    }
+    return $null
+}
 
 function Set-ConnectionTextTheme {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Mutates in-window font properties only.')]
@@ -1030,9 +1059,11 @@ function Set-ConnectionTextTheme {
     foreach ($name in $script:ConnectionBoxNames) {
         $box = $null
         try { $box = $Window.FindName($name) } catch { $box = $null }
-        if ($null -eq $box -or -not $box.PSObject.Properties['FontSize']) { continue }
-        $box.FontSize   = [Math]::Max([double]$box.FontSize, $script:ConnectionBoxFontSize)
-        $box.FontWeight = [System.Windows.FontWeights]::Bold
+        if ($null -eq $box) { continue }
+        $title = Find-FieldTitle -Box $box
+        if ($null -eq $title) { continue }
+        $title.FontSize   = [Math]::Max([double]$title.FontSize, $script:FieldTitleFontSize)
+        $title.FontWeight = [System.Windows.FontWeights]::Bold
     }
 }
 

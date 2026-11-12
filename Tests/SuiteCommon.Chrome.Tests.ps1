@@ -268,16 +268,29 @@ Describe 'Suite theme: white text on every blue box in light mode' {
         }
     }
 
-    It 'makes the site code and provider boxes at least 14 pt and bold in both themes' {
+    It 'makes the field titles of the site code and provider boxes 14 pt bold and leaves the values alone, in both themes' -Skip:([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
         foreach ($dark in $true, $false) {
-            $box = New-Object System.Windows.Controls.TextBox
-            $box.FontSize = 12; $box.FontWeight = [System.Windows.FontWeights]::Normal
-            $win = [pscustomobject]@{ Box = $box }
-            $win | Add-Member -MemberType ScriptMethod -Name FindName -Value { param($n) if ($n -eq 'txtSiteCode') { $this.Box } else { $null } }
-            InModuleScope SuiteCommon -Parameters @{ Win = $win; Dark = $dark } {
+            $grid = New-Object System.Windows.Controls.Grid
+            foreach ($i in 0..3) { $grid.ColumnDefinitions.Add((New-Object System.Windows.Controls.ColumnDefinition)) }
+            $t1 = New-Object System.Windows.Controls.TextBlock; $t1.Text = 'Site Code'; $t1.FontSize = 11
+            $t2 = New-Object System.Windows.Controls.TextBlock; $t2.Text = 'SMS Provider'; $t2.FontSize = 11
+            $v1 = New-Object System.Windows.Controls.TextBlock; $v1.FontSize = 12
+            $v2 = New-Object System.Windows.Controls.TextBlock; $v2.FontSize = 12
+            [System.Windows.Controls.Grid]::SetColumn($t1, 0); [System.Windows.Controls.Grid]::SetColumn($v1, 1)
+            [System.Windows.Controls.Grid]::SetColumn($t2, 2); [System.Windows.Controls.Grid]::SetColumn($v2, 3)
+            foreach ($c in $t1, $v1, $t2, $v2) { [void]$grid.Children.Add($c) }
+            $win = [pscustomobject]@{ Map = @{ txtSiteCode = $v1; txtSmsProvider = $v2 } }
+            $win | Add-Member -MemberType ScriptMethod -Name FindName -Value { param($n) $this.Map[$n] }
+            InModuleScope SuiteCommon -Parameters @{ Win = $win; Dark = $dark; T1 = $t1; T2 = $t2; V1 = $v1; V2 = $v2 } {
                 Set-ConnectionTextTheme -Window $Win -IsDark $Dark
-                $Win.Box.FontSize | Should -BeGreaterOrEqual 14
-                $Win.Box.FontWeight | Should -Be ([System.Windows.FontWeights]::Bold)
+                foreach ($t in $T1, $T2) {
+                    $t.FontSize | Should -BeGreaterOrEqual 14
+                    $t.FontWeight | Should -Be ([System.Windows.FontWeights]::Bold)
+                }
+                foreach ($v in $V1, $V2) {
+                    $v.FontSize | Should -Be 12
+                    $v.FontWeight | Should -Be ([System.Windows.FontWeights]::Normal)
+                }
             }
         }
     }
