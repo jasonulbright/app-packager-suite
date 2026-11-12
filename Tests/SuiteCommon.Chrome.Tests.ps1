@@ -199,7 +199,7 @@ Describe 'Suite theme context' {
         Update-SidebarButtonTheme
         $b1.Background.ToString() | Should -Be $b2.Background.ToString()
         $b1.BorderBrush.ToString() | Should -Be '#FFF9F9F9'
-        $b2.BorderBrush.ToString() | Should -Be '#FF555555'
+        $b2.BorderBrush.ToString() | Should -Be '#FF8C8C8C'
     }
 
     It 'evaluates the IsDark getter in the caller scope' {
@@ -326,5 +326,33 @@ Describe 'Suite theme: light and dark differ in colors only' {
         $themeCode = [regex]::Match($src, '(?s)function Update-SidebarButtonTheme.*?function Set-DialogTheme').Value
         $themeCode | Should -Not -BeNullOrEmpty
         $themeCode | Should -Not -Match '(?i)\$\w+\.(FontSize|FontWeight|FontStyle|TextDecorations)\s*=\s*if\s*\(\s*\$IsDark'
+    }
+}
+
+Describe 'Suite theme: state contrast in both themes' {
+
+    It 'keeps text at 4.5:1 and component borders and active borders at 3:1 against their backgrounds' {
+        InModuleScope SuiteCommon {
+            Initialize-SuiteTheme -Window ([pscustomobject]@{}) -IsDarkGetter { $true }
+            $b = $script:SuiteTheme.Brushes
+            $lum = {
+                param($c)
+                $ch = foreach ($v in $c.R, $c.G, $c.B) { $x = $v / 255.0; if ($x -le 0.03928) { $x / 12.92 } else { [Math]::Pow(($x + 0.055) / 1.055, 2.4) } }
+                0.2126 * $ch[0] + 0.7152 * $ch[1] + 0.0722 * $ch[2]
+            }
+            $ratio = { param($x, $y) $l1 = & $lum $x; $l2 = & $lum $y; ([Math]::Max($l1, $l2) + 0.05) / ([Math]::Min($l1, $l2) + 0.05) }
+            $pairs = @(
+                @{ N = 'dark idle border on idle fill';     F = $b.DarkButtonBorder.Color; B = $b.DarkButtonBg.Color;     Min = 3.0 }
+                @{ N = 'dark idle border on active fill';   F = $b.DarkButtonBorder.Color; B = $b.DarkActiveBg.Color;     Min = 3.0 }
+                @{ N = 'dark active border on active fill'; F = $b.DarkActiveBorder.Color; B = $b.DarkActiveBg.Color;     Min = 3.0 }
+                @{ N = 'dark text on idle fill';            F = [System.Windows.Media.Color]::FromRgb(0xF9, 0xF9, 0xF9); B = $b.DarkButtonBg.Color; Min = 4.5 }
+                @{ N = 'dark text on active fill';          F = [System.Windows.Media.Color]::FromRgb(0xF9, 0xF9, 0xF9); B = $b.DarkActiveBg.Color; Min = 4.5 }
+                @{ N = 'light text on idle fill';           F = $b.OnBlue.Color; B = $b.LightWfBg.Color;     Min = 4.0 }
+                @{ N = 'light text on active fill';         F = $b.OnBlue.Color; B = $b.LightActiveBg.Color; Min = 4.5 }
+            )
+            foreach ($p in $pairs) {
+                (& $ratio $p.F $p.B) | Should -BeGreaterOrEqual $p.Min -Because $p.N
+            }
+        }
     }
 }
