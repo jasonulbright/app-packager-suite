@@ -6,6 +6,10 @@
 
 - Add the shared footer: one style for all footer text (Segoe UI 11, normal weight and style, same in light and dark) and the connection text Site MCM · cm01.contoso.com (Initialize-SuiteFooter, Update-SuiteFooter, Format-SuiteFooterSite, Get-SuiteFooterStyle).
 
+### Launcher
+
+- Show the site code and the site server in the launcher footer, in the shared footer style. The status text no longer sets its own font size. The two boxes in the main window stay the place to edit them. Add a guard test for the launcher footer.
+
 ## [2026.11.13.0082] - 2026-11-13
 
 ## 12 components refreshed
