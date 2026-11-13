@@ -1,6 +1,16 @@
 # Changelog
 
-## [Unreleased]
+## [2026.11.13.0083] - 2026-11-13
+
+## 12 components refreshed
+
+### Installer
+
+- Carry all twelve components: App Packager 2026.11.13.0137, Collection Manager 2026.11.13.0022, Collection and Compliance Manager 2026.11.13.0018, Deployment Helper 2026.11.13.0022, Detection Method Tester 2026.11.13.0017, Device Inspector 2026.11.13.0012, DP Content Manager 2026.11.13.0018, Installer Analysis 2026.11.13.0024, Maintenance Window Manager 2026.11.13.0019, Pivots and Scripts 2026.11.13.0011, Site Hygiene 2026.11.13.0034 and Update Planner 2026.11.13.0007.
+- Show the site code and the site server in the footer of every tool that connects to ConfigMgr, in one shared footer style.
+- Restore the weight of headers and status text. Bold stays on field titles and sidebar app titles.
+- Edit the site code and the site server only in the Options window, the launcher and the first-run window. The footer shows them as text.
+- Retake the guide images in the light and the dark theme.
 
 ### SuiteCommon
 
