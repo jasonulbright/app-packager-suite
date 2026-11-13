@@ -40,6 +40,15 @@ BeforeAll {
             }
             $node = $node.ParentNode
         }
+        # Siblings and every other element in the footer bar count too.
+        $bar = $el.ParentNode
+        foreach ($d in $bar.SelectNodes('.//*')) {
+            if ($d -eq $el) { continue }
+            foreach ($a in $d.Attributes) {
+                $n = $a.LocalName -replace '^.*\.', ''
+                if ($script:FontAttr -contains $n) { $found += ('{0}.{1}' -f $d.LocalName, $a.LocalName) }
+            }
+        }
         , $found
     }
 }
@@ -64,6 +73,9 @@ Describe 'Launcher footer' {
         $up = New-Object System.Xml.XmlDocument
         $up.LoadXml('<Border FontFamily="Arial"><DockPanel><TextBlock x:Name="txtStatus" xmlns:x="u"/></DockPanel></Border>')
         (Get-FooterFontViolation -Xml $up).Count | Should -BeGreaterThan 0
+        $sib = New-Object System.Xml.XmlDocument
+        $sib.LoadXml('<Border><DockPanel><Button FontSize="11"/><TextBlock x:Name="txtStatus" xmlns:x="u"/></DockPanel></Border>')
+        (Get-FooterFontViolation -Xml $sib).Count | Should -BeGreaterThan 0
     }
 
     It 'sets no font on the status text in code' {

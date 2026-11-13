@@ -184,7 +184,7 @@ $mainXaml = @'
 
         <Border Grid.Row="3" Padding="14,6,14,6" Background="{DynamicResource MahApps.Brushes.Gray10}">
             <DockPanel>
-                <Button x:Name="btnCheckUpdates" DockPanel.Dock="Right" Content="Check for updates" FontSize="11" Height="24" Padding="8,0"
+                <Button x:Name="btnCheckUpdates" DockPanel.Dock="Right" Content="Check for updates" Height="24" Padding="8,0"
                         Style="{DynamicResource MahApps.Styles.Button.Square}" Controls:ControlsHelper.ContentCharacterCasing="Normal"/>
                 <TextBlock x:Name="txtStatus" Text="Ready." VerticalAlignment="Center"/>
             </DockPanel>
