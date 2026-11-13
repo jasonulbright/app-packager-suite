@@ -1,5 +1,19 @@
 # Changelog
 
+## [2026.11.13.0082] - 2026-11-13
+
+## 12 components refreshed
+
+### Installer
+
+- Carry all twelve components: App Packager 2026.11.13.0135, Collection Manager 2026.11.12.0021, Collection and Compliance Manager 2026.11.12.0017, Deployment Helper 2026.11.12.0021, Detection Method Tester 2026.11.12.0016, Device Inspector 2026.11.13.0011, DP Content Manager 2026.11.12.0017, Installer Analysis 2026.11.12.0023, Maintenance Window Manager 2026.11.12.0018, Pivots and Scripts 2026.11.12.0010, Site Hygiene 2026.11.12.0033 and Update Planner 2026.11.12.0006.
+- Show white text on every blue box in the light theme, in every tool.
+- Show the Site Code and SMS Provider titles in bold 14 pt in both themes. The values keep the normal style.
+- Use one themed button style in every window and dialog, with a visible border on hover.
+- Keep raw error text out of every window. The log file holds it.
+- Use Title Case for buttons, headers and dialog titles, and one short sentence for each tooltip.
+- Retake the guide images in the light and the dark theme.
+
 ## [2026.11.12.0081] - 2026-11-12
 
 ## 1 component refreshed
