@@ -356,3 +356,59 @@ Describe 'Suite theme: state contrast in both themes' {
         }
     }
 }
+
+Describe 'Suite footer: one shared style and the connection text' {
+
+    It 'formats the site connection as "Site MCM · cm01.contoso.com"' {
+        $dot = [string][char]0x00B7
+        Format-SuiteFooterSite -SiteCode 'MCM' -SiteServer 'cm01.contoso.com' | Should -Be ("Site MCM $dot cm01.contoso.com")
+    }
+
+    It 'shows a plain empty state for a missing site code, a missing site server or both' {
+        Format-SuiteFooterSite -SiteCode '' -SiteServer '' | Should -Be 'Site not set'
+        Format-SuiteFooterSite -SiteCode 'MCM' -SiteServer ' ' | Should -Match '^Site MCM . server not set$'
+        Format-SuiteFooterSite -SiteCode $null -SiteServer 'cm01' | Should -Match '^Site not set . cm01$'
+    }
+
+    It 'trims the values' {
+        Format-SuiteFooterSite -SiteCode ' MCM ' -SiteServer ' cm01 ' | Should -Match '^Site MCM . cm01$'
+    }
+
+    It 'has one footer style with no theme input and a normal weight, style and decoration' {
+        $s = Get-SuiteFooterStyle
+        $s.FontFamily | Should -Be 'Segoe UI'
+        $s.FontSize | Should -Be 11
+        $s.FontWeight | Should -Be 'Normal'
+        $s.FontStyle | Should -Be 'Normal'
+        $s.TextDecoration | Should -Be 'None'
+        (Get-Command Get-SuiteFooterStyle).Parameters.Keys | Should -Not -Contain 'IsDark'
+        (Get-Command Initialize-SuiteFooter).Parameters.Keys | Should -Not -Contain 'IsDark'
+    }
+
+    It 'keeps the font out of the footer helpers apart from the shared style (no IsDark use)' {
+        $text = (Get-Content -LiteralPath (Join-Path (Split-Path $PSScriptRoot -Parent) 'SuiteCommon\SuiteCommon.psm1') -Raw)
+        $m = [regex]::Match($text, '(?s)function Get-SuiteFooterStyle.*?function Update-SuiteFooter.*?\r?\n\}')
+        $m.Success | Should -BeTrue
+        $m.Value | Should -Not -Match 'IsDark'
+    }
+
+    It 'gives the status text and the connection text the same font (real controls, STA only)' -Skip:([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
+        $bar = New-Object System.Windows.Controls.Border
+        $status = New-Object System.Windows.Controls.TextBlock
+        $status.FontSize = 20; $status.FontWeight = [System.Windows.FontWeights]::Bold
+        $bar.Child = $status
+        $win = New-Object System.Windows.Window
+        $win.Content = $bar
+        [System.Windows.NameScope]::SetNameScope($win, (New-Object System.Windows.NameScope))
+        $win.RegisterName('txtStatus', $status)
+        $site = Initialize-SuiteFooter -Window $win
+        $site | Should -Not -BeNullOrEmpty
+        foreach ($p in 'FontFamily', 'FontSize', 'FontWeight', 'FontStyle') {
+            "$($site.$p)" | Should -Be "$($status.$p)" -Because $p
+        }
+        $status.FontSize | Should -Be 11
+        $status.FontWeight | Should -Be ([System.Windows.FontWeights]::Normal)
+        Update-SuiteFooter -Window $win -SiteCode 'MCM' -SiteServer 'cm01.contoso.com'
+        $site.Text | Should -Match '^Site MCM . cm01\.contoso\.com$'
+    }
+}

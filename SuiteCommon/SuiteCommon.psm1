@@ -1067,6 +1067,108 @@ function Set-ConnectionTextTheme {
     }
 }
 
+# Footer. One shared style for all footer text in every app, in light and dark:
+# the same font family, size, weight, style and decoration. A theme changes
+# colors only, through the MahApps text brush. The footer shows the status text
+# on the left and the site connection on the right: "Site MCM · cm01.contoso.com".
+# The connection is read-only text. A click may open Options at the connection fields.
+$script:FooterSiteName = 'txtFooterSite'
+
+function Get-SuiteFooterStyle {
+    [CmdletBinding()]
+    param()
+    [pscustomobject]@{
+        FontFamily     = 'Segoe UI'
+        FontSize       = 11.0
+        FontWeight     = 'Normal'
+        FontStyle      = 'Normal'
+        TextDecoration = 'None'
+        Foreground     = 'MahApps.Brushes.Text'
+    }
+}
+
+function Format-SuiteFooterSite {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([string]$SiteCode, [string]$SiteServer)
+    $code = ([string]$SiteCode).Trim()
+    $server = ([string]$SiteServer).Trim()
+    $sep = [string][char]0x00B7
+    if (-not $code -and -not $server) { return 'Site not set' }
+    if (-not $code) { return ('Site not set {0} {1}' -f $sep, $server) }
+    if (-not $server) { return ('Site {0} {1} server not set' -f $code, $sep) }
+    return ('Site {0} {1} {2}' -f $code, $sep, $server)
+}
+
+function Set-SuiteFooterFont {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Mutates in-window font properties only.')]
+    param($Element)
+    if ($null -eq $Element) { return }
+    $s = Get-SuiteFooterStyle
+    $Element.FontFamily = New-Object System.Windows.Media.FontFamily($s.FontFamily)
+    $Element.FontSize   = [double]$s.FontSize
+    $Element.FontWeight = [System.Windows.FontWeights]::Normal
+    $Element.FontStyle  = [System.Windows.FontStyles]::Normal
+    if ($Element -is [System.Windows.Controls.TextBlock]) { $Element.TextDecorations = $null }
+    $Element.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, $s.Foreground)
+}
+
+# Puts the site connection text at the right end of the status bar and gives the
+# status text and the connection text the same footer style. The status bar is
+# the Border that holds the status TextBlock. Call it once after the window loads.
+function Initialize-SuiteFooter {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Window,
+        [string]$StatusName = 'txtStatus',
+        [scriptblock]$OnOpenOptions
+    )
+    $status = $Window.FindName($StatusName)
+    if ($null -eq $status) { return $null }
+    $existing = $Window.FindName($script:FooterSiteName)
+    if ($null -ne $existing) { Set-SuiteFooterFont $status; Set-SuiteFooterFont $existing; return $existing }
+    $bar = $status.Parent
+    if ($bar -isnot [System.Windows.Controls.Border]) { return $null }
+
+    $site = New-Object System.Windows.Controls.TextBlock
+    $site.Name = $script:FooterSiteName
+    $site.Text = (Format-SuiteFooterSite -SiteCode '' -SiteServer '')
+    $site.Margin = [System.Windows.Thickness]::new(12, 0, 0, 0)
+    $site.VerticalAlignment = 'Center'
+    $site.HorizontalAlignment = 'Right'
+    $site.ToolTip = 'Site code and site server. Open Options to change them.'
+    [System.Windows.Automation.AutomationProperties]::SetName($site, 'Site connection')
+    if ($OnOpenOptions) {
+        $site.Cursor = [System.Windows.Input.Cursors]::Hand
+        $handler = $OnOpenOptions
+        $site.Add_MouseLeftButtonUp({ & $handler }.GetNewClosure())
+    }
+
+    $grid = New-Object System.Windows.Controls.Grid
+    $c0 = New-Object System.Windows.Controls.ColumnDefinition; $c0.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+    $c1 = New-Object System.Windows.Controls.ColumnDefinition; $c1.Width = [System.Windows.GridLength]::Auto
+    [void]$grid.ColumnDefinitions.Add($c0); [void]$grid.ColumnDefinitions.Add($c1)
+    $bar.Child = $null
+    [void]$grid.Children.Add($status)
+    [System.Windows.Controls.Grid]::SetColumn($site, 1)
+    [void]$grid.Children.Add($site)
+    $bar.Child = $grid
+    try { $Window.RegisterName($script:FooterSiteName, $site) } catch { Write-Verbose 'The footer name is already registered.' }
+    $status.VerticalAlignment = 'Center'
+    Set-SuiteFooterFont $status
+    Set-SuiteFooterFont $site
+    return $site
+}
+
+function Update-SuiteFooter {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Mutates in-window text only.')]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Window, [string]$SiteCode, [string]$SiteServer)
+    $site = $Window.FindName($script:FooterSiteName)
+    if ($null -eq $site) { return }
+    $site.Text = Format-SuiteFooterSite -SiteCode $SiteCode -SiteServer $SiteServer
+}
+
 function Update-SidebarButtonTheme {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Mutates in-window brush properties only.')]
     param(

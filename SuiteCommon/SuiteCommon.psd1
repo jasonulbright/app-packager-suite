@@ -45,6 +45,10 @@
         'Update-SidebarButtonTheme'
         'Set-ButtonTheme'
         'Set-DialogTheme'
+        'Get-SuiteFooterStyle'
+        'Format-SuiteFooterSite'
+        'Initialize-SuiteFooter'
+        'Update-SuiteFooter'
 
         # Dialogs
         'Show-ThemedMessage'
