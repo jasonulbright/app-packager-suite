@@ -366,12 +366,12 @@ Describe 'Suite footer: one shared style and the connection text' {
 
     It 'shows a plain empty state for a missing site code, a missing site server or both' {
         Format-SuiteFooterSite -SiteCode '' -SiteServer '' | Should -Be 'Site not set'
-        Format-SuiteFooterSite -SiteCode 'MCM' -SiteServer ' ' | Should -Match '^Site MCM . server not set$'
-        Format-SuiteFooterSite -SiteCode $null -SiteServer 'cm01' | Should -Match '^Site not set . cm01$'
+        Format-SuiteFooterSite -SiteCode 'MCM' -SiteServer ' ' | Should -Be ("Site MCM $([char]0x00B7) server not set")
+        Format-SuiteFooterSite -SiteCode $null -SiteServer 'cm01' | Should -Be ("Site not set $([char]0x00B7) cm01")
     }
 
     It 'trims the values' {
-        Format-SuiteFooterSite -SiteCode ' MCM ' -SiteServer ' cm01 ' | Should -Match '^Site MCM . cm01$'
+        Format-SuiteFooterSite -SiteCode ' MCM ' -SiteServer ' cm01 ' | Should -Be ("Site MCM $([char]0x00B7) cm01")
     }
 
     It 'has one footer style with no theme input and a normal weight, style and decoration' {
@@ -410,5 +410,64 @@ Describe 'Suite footer: one shared style and the connection text' {
         $status.FontWeight | Should -Be ([System.Windows.FontWeights]::Normal)
         Update-SuiteFooter -Window $win -SiteCode 'MCM' -SiteServer 'cm01.contoso.com'
         $site.Text | Should -Match '^Site MCM . cm01\.contoso\.com$'
+    }
+}
+
+Describe 'Suite footer: layouts' -Skip:([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
+
+    BeforeAll {
+        function New-FooterWindow($Bar, $Status) {
+            $win = New-Object System.Windows.Window
+            $win.Content = $Bar
+            [System.Windows.NameScope]::SetNameScope($win, (New-Object System.Windows.NameScope))
+            $win.RegisterName('txtStatus', $Status)
+            $win
+        }
+    }
+
+    It 'adds the connection text next to a status text that sits in a DockPanel' {
+        $dock = New-Object System.Windows.Controls.DockPanel
+        $status = New-Object System.Windows.Controls.TextBlock
+        $status.FontSize = 20; $status.FontWeight = [System.Windows.FontWeights]::Bold
+        [void]$dock.Children.Add($status)
+        $bar = New-Object System.Windows.Controls.Border; $bar.Child = $dock
+        $win = New-FooterWindow $bar $status
+        $site = Initialize-SuiteFooter -Window $win
+        $site | Should -Not -BeNullOrEmpty
+        $dock.Children.Contains($site) | Should -BeTrue
+        [System.Windows.Controls.DockPanel]::GetDock($site) | Should -Be ([System.Windows.Controls.Dock]::Right)
+        $status.FontSize | Should -Be 11
+        $status.FontWeight | Should -Be ([System.Windows.FontWeights]::Normal)
+        $site.FontSize | Should -Be $status.FontSize
+    }
+
+    It 'throws a clear error for a layout it cannot use' {
+        $stack = New-Object System.Windows.Controls.StackPanel
+        $status = New-Object System.Windows.Controls.TextBlock
+        [void]$stack.Children.Add($status)
+        $win = New-FooterWindow $stack $status
+        { Initialize-SuiteFooter -Window $win } | Should -Throw '*must sit in a Border or a DockPanel*'
+    }
+
+    It 'is safe to call twice and keeps one connection text' {
+        $status = New-Object System.Windows.Controls.TextBlock
+        $bar = New-Object System.Windows.Controls.Border; $bar.Child = $status
+        $win = New-FooterWindow $bar $status
+        $a = Initialize-SuiteFooter -Window $win
+        $b = Initialize-SuiteFooter -Window $win
+        $b | Should -Be $a
+        $bar.Child.Children.Count | Should -Be 2
+    }
+
+    It 'runs the Options handler on a click without letting an error out' {
+        $status = New-Object System.Windows.Controls.TextBlock
+        $bar = New-Object System.Windows.Controls.Border; $bar.Child = $status
+        $win = New-FooterWindow $bar $status
+        $script:clicked = 0
+        $site = Initialize-SuiteFooter -Window $win -OnOpenOptions { $script:clicked++; throw 'boom' }
+        $args2 = New-Object System.Windows.Input.MouseButtonEventArgs([System.Windows.Input.Mouse]::PrimaryDevice, 0, [System.Windows.Input.MouseButton]::Left)
+        $args2.RoutedEvent = [System.Windows.UIElement]::MouseLeftButtonUpEvent
+        $site.RaiseEvent($args2)
+        $script:clicked | Should -Be 1
     }
 }

@@ -1107,9 +1107,12 @@ function Set-SuiteFooterFont {
     $s = Get-SuiteFooterStyle
     $Element.FontFamily = New-Object System.Windows.Media.FontFamily($s.FontFamily)
     $Element.FontSize   = [double]$s.FontSize
-    $Element.FontWeight = [System.Windows.FontWeights]::Normal
-    $Element.FontStyle  = [System.Windows.FontStyles]::Normal
-    if ($Element -is [System.Windows.Controls.TextBlock]) { $Element.TextDecorations = $null }
+    $Element.FontWeight = [System.Windows.FontWeights]::($s.FontWeight)
+    $Element.FontStyle  = [System.Windows.FontStyles]::($s.FontStyle)
+    if ($Element -is [System.Windows.Controls.TextBlock]) {
+        $Element.TextDecorations = $null
+        $Element.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
+    }
     $Element.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, $s.Foreground)
 }
 
@@ -1125,13 +1128,18 @@ function Initialize-SuiteFooter {
     )
     $status = $Window.FindName($StatusName)
     if ($null -eq $status) { return $null }
+    Set-SuiteFooterFont $status
     $existing = $Window.FindName($script:FooterSiteName)
-    if ($null -ne $existing) { Set-SuiteFooterFont $status; Set-SuiteFooterFont $existing; return $existing }
+    if ($null -ne $existing) { Set-SuiteFooterFont $existing; return $existing }
     $bar = $status.Parent
-    if ($bar -isnot [System.Windows.Controls.Border]) { return $null }
+    $isBorder = ($bar -is [System.Windows.Controls.Border])
+    $isDock = ($bar -is [System.Windows.Controls.DockPanel])
+    if (-not $isBorder -and -not $isDock) {
+        $kind = if ($bar) { $bar.GetType().Name } else { 'nothing' }
+        throw ('Initialize-SuiteFooter: the status text must sit in a Border or a DockPanel, not in {0}.' -f $kind)
+    }
 
     $site = New-Object System.Windows.Controls.TextBlock
-    $site.Name = $script:FooterSiteName
     $site.Text = (Format-SuiteFooterSite -SiteCode '' -SiteServer '')
     $site.Margin = [System.Windows.Thickness]::new(12, 0, 0, 0)
     $site.VerticalAlignment = 'Center'
@@ -1139,23 +1147,35 @@ function Initialize-SuiteFooter {
     $site.ToolTip = 'Site code and site server. Open Options to change them.'
     [System.Windows.Automation.AutomationProperties]::SetName($site, 'Site connection')
     if ($OnOpenOptions) {
-        $site.Cursor = [System.Windows.Input.Cursors]::Hand
         $handler = $OnOpenOptions
-        $site.Add_MouseLeftButtonUp({ & $handler }.GetNewClosure())
+        $open = {
+            try { & $handler } catch { Write-Verbose ('The footer click failed: {0}' -f $_.Exception.Message) }
+        }.GetNewClosure()
+        $site.Cursor = [System.Windows.Input.Cursors]::Hand
+        $site.Focusable = $true
+        $site.Add_MouseLeftButtonUp({ & $open }.GetNewClosure())
+        $site.Add_KeyUp({ param($sender, $e) if ($e.Key -eq 'Enter' -or $e.Key -eq 'Space') { & $open } }.GetNewClosure())
     }
 
-    $grid = New-Object System.Windows.Controls.Grid
-    $c0 = New-Object System.Windows.Controls.ColumnDefinition; $c0.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
-    $c1 = New-Object System.Windows.Controls.ColumnDefinition; $c1.Width = [System.Windows.GridLength]::Auto
-    [void]$grid.ColumnDefinitions.Add($c0); [void]$grid.ColumnDefinitions.Add($c1)
-    $bar.Child = $null
-    [void]$grid.Children.Add($status)
-    [System.Windows.Controls.Grid]::SetColumn($site, 1)
-    [void]$grid.Children.Add($site)
-    $bar.Child = $grid
-    try { $Window.RegisterName($script:FooterSiteName, $site) } catch { Write-Verbose 'The footer name is already registered.' }
+    if ($isDock) {
+        [System.Windows.Controls.DockPanel]::SetDock($site, [System.Windows.Controls.Dock]::Right)
+        $bar.Children.Insert($bar.Children.IndexOf($status), $site)
+    }
+    else {
+        $grid = New-Object System.Windows.Controls.Grid
+        $c0 = New-Object System.Windows.Controls.ColumnDefinition; $c0.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+        $c1 = New-Object System.Windows.Controls.ColumnDefinition; $c1.Width = [System.Windows.GridLength]::Auto
+        [void]$grid.ColumnDefinitions.Add($c0); [void]$grid.ColumnDefinitions.Add($c1)
+        $bar.Child = $null
+        [void]$grid.Children.Add($status)
+        [System.Windows.Controls.Grid]::SetColumn($site, 1)
+        [void]$grid.Children.Add($site)
+        $bar.Child = $grid
+    }
+    $site.Name = $script:FooterSiteName
+    try { $Window.RegisterName($script:FooterSiteName, $site) }
+    catch { Write-Verbose ('The footer name was not registered: {0}' -f $_.Exception.Message) }
     $status.VerticalAlignment = 'Center'
-    Set-SuiteFooterFont $status
     Set-SuiteFooterFont $site
     return $site
 }
