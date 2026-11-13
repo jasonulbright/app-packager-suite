@@ -186,7 +186,7 @@ $mainXaml = @'
             <DockPanel>
                 <Button x:Name="btnCheckUpdates" DockPanel.Dock="Right" Content="Check for updates" FontSize="11" Height="24" Padding="8,0"
                         Style="{DynamicResource MahApps.Styles.Button.Square}" Controls:ControlsHelper.ContentCharacterCasing="Normal"/>
-                <TextBlock x:Name="txtStatus" Text="Ready." FontSize="11" VerticalAlignment="Center"/>
+                <TextBlock x:Name="txtStatus" Text="Ready." VerticalAlignment="Center"/>
             </DockPanel>
         </Border>
     </Grid>
@@ -253,11 +253,26 @@ Initialize-SuiteTheme -Window $window `
 $txtSiteCode.Text = [string]$global:Prefs['SiteCode']
 $txtProvider.Text = [string]$global:Prefs['SMSProvider']
 
+# The footer is read-only text. The two boxes above stay the place to edit the
+# site code and the site server in this window.
+function Sync-SuiteFooter {
+    try {
+        if (-not $script:FooterReady) {
+            [void](Initialize-SuiteFooter -Window $window -StatusName 'txtStatus')
+            $script:FooterReady = $true
+        }
+        Update-SuiteFooter -Window $window -SiteCode ([string]$global:Prefs['SiteCode']) -SiteServer ([string]$global:Prefs['SMSProvider'])
+    } catch {
+        $txtStatus.Text = 'The footer failed.'
+    }
+}
+
 $btnSaveProfile.Add_Click({
     $global:Prefs['SiteCode']    = ([string]$txtSiteCode.Text).Trim()
     $global:Prefs['SMSProvider'] = ([string]$txtProvider.Text).Trim()
     $result = Save-LauncherSettings -Subject 'Connection profile'
     Set-LaunchEnvironment
+    Sync-SuiteFooter
     if ($result.Saved) {
         Set-SuiteStatus 'Connection profile saved; new launches inherit it.'
         return
@@ -395,6 +410,7 @@ $window.Add_Loaded({
     }
     Set-ButtonTheme
     Update-TitleBarBrushes
+    Sync-SuiteFooter
     Set-SuiteStatus ('{0} tool(s) found under {1}. Site profile is handed to every launch.' -f $script:Tools.Count, (Get-SuiteToolsRoot))
     Start-SuiteUpdateCheck
 })
