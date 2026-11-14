@@ -4,8 +4,8 @@
     border, a column header of a disabled grid shows the gray text, and a window with its own style keeps it.
 
 .DESCRIPTION
-    Shows MetroWindows off screen. The window tests run only on the lab or in CI (SUITE_ALLOW_WINDOW_TESTS=1),
-    never on the dev PC. Exit code 0 when every expectation holds.
+    Shows MetroWindows off screen. The window tests run only on the lab or in CI (SUITE_ALLOW_WINDOW_TESTS=1).
+    Exit code 0 when every expectation holds.
 
     Run under Windows PowerShell 5.1:
         powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File Tests\Invoke-ImplicitStyleSmoke.ps1
@@ -14,7 +14,6 @@
 param([string]$LibPath)
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
-if ($env:COMPUTERNAME -ieq 'AYW') { Write-Host 'SKIP: window probes never run on the dev PC (AYW).'; exit 0 }
 if ($env:SUITE_ALLOW_WINDOW_TESTS -ne '1') { Write-Host 'SKIP: SUITE_ALLOW_WINDOW_TESTS is not 1.'; exit 0 }
 if (-not $LibPath) { $LibPath = Join-Path $repoRoot 'Lib' }
 if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') { throw 'Run this script with -STA.' }
