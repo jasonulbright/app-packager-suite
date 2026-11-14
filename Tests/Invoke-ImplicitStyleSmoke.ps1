@@ -6,7 +6,7 @@
 .DESCRIPTION
     Shows MetroWindows off screen. The window tests run only on the lab or in CI (SUITE_ALLOW_WINDOW_TESTS=1).
     SUITE_VISIBLE_WINDOWS=1 puts the windows at 80,80 and keeps each one on screen for about two seconds, for the visible run
-    of the lab (Run-VisibleProbe.ps1, labadmin session of CLIENT01). Without it the windows sit at -32000.
+    of the lab (toolsRun-VisibleProbe.ps1, labadmin session of CLIENT01). Without it the windows sit at -32000.
     Exit code 0 when every expectation holds.
 
     Run under Windows PowerShell 5.1:
