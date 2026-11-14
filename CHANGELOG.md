@@ -5,6 +5,7 @@
 ### Added
 
 - Add tools/Run-LabProbe.ps1 and tools/Run-VisibleProbe.ps1, the lab runners for tests without windows and for visible window tests.
+- Run the lab runners with -NonInteractive, end a run with no output for 10 minutes and report it as failed.
 
 ## [2026.11.14.0084] - 2026-11-14
 
