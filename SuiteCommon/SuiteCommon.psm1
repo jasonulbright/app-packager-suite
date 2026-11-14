@@ -2217,3 +2217,235 @@ function Start-SuiteUpdateNotice {
     }
     catch { return $null }
 }
+
+#region Window test helpers (measurement only; no assertions)
+# These functions are for window tests that run in an STA runspace with a shown window.
+# The state report needs the real mouse, so it belongs to a visible run (SUITE_VISIBLE_WINDOWS=1).
+
+function Get-SuiteContrastRatio {
+    <#
+    .SYNOPSIS
+        WCAG contrast ratio of two colors (1 to 21).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][System.Windows.Media.Color]$Foreground,
+        [Parameter(Mandatory)][System.Windows.Media.Color]$Background
+    )
+    $lum = {
+        param($c)
+        $f = { param($v) $v = $v / 255.0; if ($v -le 0.04045) { $v / 12.92 } else { [math]::Pow(($v + 0.055) / 1.055, 2.4) } }
+        0.2126 * (& $f $c.R) + 0.7152 * (& $f $c.G) + 0.0722 * (& $f $c.B)
+    }
+    $l1 = & $lum $Foreground
+    $l2 = & $lum $Background
+    if ($l1 -lt $l2) { $t = $l1; $l1 = $l2; $l2 = $t }
+    return (($l1 + 0.05) / ($l2 + 0.05))
+}
+
+function Get-SuiteVisualDescendant {
+    <#
+    .SYNOPSIS
+        All visual descendants of an element, depth first.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Element)
+    $list = New-Object System.Collections.Generic.List[object]
+    $walk = {
+        param($e)
+        $n = [System.Windows.Media.VisualTreeHelper]::GetChildrenCount($e)
+        for ($i = 0; $i -lt $n; $i++) {
+            $c = [System.Windows.Media.VisualTreeHelper]::GetChild($e, $i)
+            $list.Add($c)
+            & $walk $c
+        }
+    }
+    & $walk $Element
+    return $list.ToArray()
+}
+
+function Test-SuiteVisibleInTree {
+    <#
+    .SYNOPSIS
+        True when an element and all of its ancestors are visible.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Element)
+    $e = $Element
+    while ($e) {
+        if ($e -is [System.Windows.UIElement] -and $e.Visibility -ne [System.Windows.Visibility]::Visible) { return $false }
+        $e = [System.Windows.Media.VisualTreeHelper]::GetParent($e)
+    }
+    return $true
+}
+
+function Get-SuiteButtonRow {
+    <#
+    .SYNOPSIS
+        One row per visible text button of a window: name, text, font weight, border thickness and border/foreground colors.
+    .DESCRIPTION
+        Window command buttons (minimize, maximize, close), toggle buttons and the template buttons of other controls are skipped.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Window, [string]$Label = '')
+    $hex = { param($b) if ($b -is [System.Windows.Media.SolidColorBrush]) { $b.Color.ToString() } else { '' } }
+    $rows = New-Object System.Collections.Generic.List[object]
+    foreach ($d in (Get-SuiteVisualDescendant -Element $Window)) {
+        if ($d -isnot [System.Windows.Controls.Primitives.ButtonBase] -or $d -is [System.Windows.Controls.Primitives.ToggleButton]) { continue }
+        if ($d.GetType().Name -ne 'Button') { continue }
+        if ($d.TemplatedParent -and $d.TemplatedParent.GetType().Name -ne 'Button') { continue }
+        if (-not (Test-SuiteVisibleInTree -Element $d)) { continue }
+        $content = if ($d.Content -is [string]) { $d.Content } else { $d.Name }
+        if (-not $content) { continue }
+        $rows.Add([pscustomobject]@{
+                Window          = $Label
+                Name            = $d.Name
+                Text            = [string]$content
+                Weight          = $d.FontWeight.ToOpenTypeWeight()
+                BorderThickness = [math]::Max([math]::Max($d.BorderThickness.Left, $d.BorderThickness.Right), [math]::Max($d.BorderThickness.Top, $d.BorderThickness.Bottom))
+                BorderColor     = (& $hex $d.BorderBrush)
+                ForegroundColor = (& $hex $d.Foreground)
+            })
+    }
+    return $rows.ToArray()
+}
+
+function Get-SuiteWindowChrome {
+    <#
+    .SYNOPSIS
+        Title bar brushes, title text contrast and button rows of a shown MetroWindow.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Window, [string]$Label = '')
+    $hex = { param($b) if ($b -is [System.Windows.Media.SolidColorBrush]) { $b.Color.ToString() } else { '' } }
+    $act = $Window.WindowTitleBrush
+    $text = if ($Window.TitleForeground -is [System.Windows.Media.SolidColorBrush]) { $Window.TitleForeground.Color } else { [System.Windows.Media.Colors]::White }
+    $ratio = 0.0
+    if ($act -is [System.Windows.Media.SolidColorBrush]) { $ratio = [math]::Round((Get-SuiteContrastRatio -Foreground $text -Background $act.Color), 2) }
+    $themeText = ''
+    try { $themeText = & $hex $Window.FindResource('MahApps.Brushes.ThemeForeground') } catch { $null = $_ }
+    return [pscustomobject]@{
+        Title      = [string]$Window.Title
+        Label      = $Label
+        Active     = (& $hex $act)
+        Inactive   = (& $hex $Window.NonActiveWindowTitleBrush)
+        TitleRatio = $ratio
+        ThemeText  = $themeText
+        Buttons    = @(Get-SuiteButtonRow -Window $Window -Label $Label)
+    }
+}
+
+function Get-SuiteButtonStateReport {
+    <#
+    .SYNOPSIS
+        Measures the normal, focus, hover and pressed states of the buttons of a shown window with the real mouse.
+    .DESCRIPTION
+        Samples the visible, enabled buttons (one per distinct style, at most -Max). For each state it reads the colors
+        that the template shows: Text is the contrast of the button text on the button fill (the backdrop where the fill is
+        transparent) and Edge is the larger contrast of the border or fill on the backdrop. The mouse is parked at the
+        bottom right corner of the screen, and the mouse button goes up while the pointer is off the button, so no click
+        happens. Hover, Pressed and Focused tell whether the state was reached. Needs the visible labadmin session.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Window,
+        [bool]$Dark = $false,
+        [int]$Max = 6
+    )
+    if (-not ('SuiteStateUi' -as [type])) {
+        Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class SuiteStateUi { [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y); [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint dx, uint dy, uint d, UIntPtr e); }'
+    }
+    $w = $Window
+    $pump = {
+        param($win, $n)
+        for ($i = 0; $i -lt $n; $i++) {
+            $win.Dispatcher.Invoke([action] {}, [System.Windows.Threading.DispatcherPriority]::Background)
+            Start-Sleep -Milliseconds 40
+        }
+    }
+    $solid = { param($b) if ($b -is [System.Windows.Media.SolidColorBrush]) { $b.Color } else { $null } }
+    $over = {
+        param($c, $bg)
+        $a = $c.A / 255.0
+        [System.Windows.Media.Color]::FromRgb([byte]($c.R * $a + $bg.R * (1 - $a)), [byte]($c.G * $a + $bg.G * (1 - $a)), [byte]($c.B * $a + $bg.B * (1 - $a)))
+    }
+    $winBg = & $solid $w.Background
+    if (-not $winBg) { $winBg = $(if ($Dark) { [System.Windows.Media.Colors]::Black } else { [System.Windows.Media.Colors]::White }) }
+    $backdropOf = {
+        param($el)
+        $parent = [System.Windows.Media.VisualTreeHelper]::GetParent($el)
+        while ($parent) {
+            $b = $null
+            if ($parent -is [System.Windows.Controls.Border]) { $b = $parent.Background }
+            elseif ($parent -is [System.Windows.Controls.Panel]) { $b = $parent.Background }
+            elseif ($parent -is [System.Windows.Controls.Control]) { $b = $parent.Background }
+            $c = & $solid $b
+            if ($c -and $c.A -eq 255) { return $c }
+            $parent = [System.Windows.Media.VisualTreeHelper]::GetParent($parent)
+        }
+        return $winBg
+    }
+    $readState = {
+        param($btn, $backdrop)
+        $cp = $null; $fill = $null; $border = $null
+        foreach ($d in (Get-SuiteVisualDescendant -Element $btn)) {
+            if (-not $cp -and $d -is [System.Windows.Controls.ContentPresenter]) { $cp = $d }
+            $bgBrush = $null
+            if ($d -is [System.Windows.Controls.Border]) { $bgBrush = $d.Background } elseif ($d -is [System.Windows.Controls.Panel]) { $bgBrush = $d.Background }
+            if (-not $fill -and $bgBrush) { $c = & $solid $bgBrush; if ($c -and $c.A -gt 0) { $fill = $c } }
+            if (-not $border -and $d -is [System.Windows.Controls.Border] -and $d.BorderThickness.Left -gt 0) { $c = & $solid $d.BorderBrush; if ($c -and $c.A -gt 0) { $border = $c } }
+        }
+        if (-not $fill) { $c = & $solid $btn.Background; if ($c -and $c.A -gt 0) { $fill = $c } }
+        if (-not $border -and $btn.BorderThickness.Left -gt 0) { $c = & $solid $btn.BorderBrush; if ($c -and $c.A -gt 0) { $border = $c } }
+        $fillOpaque = if ($fill) { & $over $fill $backdrop } else { $backdrop }
+        $text = & $solid ([System.Windows.Documents.TextElement]::GetForeground($(if ($cp) { $cp } else { $btn })))
+        if (-not $text) { $text = & $solid $btn.Foreground }
+        $textOpaque = & $over $text $fillOpaque
+        $edge = 0.0
+        if ($border) { $edge = [math]::Max($edge, (Get-SuiteContrastRatio -Foreground (& $over $border $backdrop) -Background $backdrop)) }
+        if ($fill) { $edge = [math]::Max($edge, (Get-SuiteContrastRatio -Foreground $fillOpaque -Background $backdrop)) }
+        [pscustomobject]@{ Text = [math]::Round((Get-SuiteContrastRatio -Foreground $textOpaque -Background $fillOpaque), 2); Edge = [math]::Round($edge, 2) }
+    }
+    $seen = @{}
+    $sample = New-Object System.Collections.Generic.List[object]
+    foreach ($d in (Get-SuiteVisualDescendant -Element $w)) {
+        if ($d.GetType().Name -ne 'Button' -or -not $d.IsEnabled -or -not (Test-SuiteVisibleInTree -Element $d) -or $d.ActualWidth -lt 20) { continue }
+        if ($d.TemplatedParent) { continue }
+        $k = if ($d.Style) { [string]$d.Style.GetHashCode() } else { 'default' }
+        if ($seen.ContainsKey($k)) { continue }
+        $seen[$k] = $true
+        $sample.Add($d)
+        if ($sample.Count -ge $Max) { break }
+    }
+    $px = [int]([System.Windows.SystemParameters]::VirtualScreenWidth - 5)
+    $py = [int]([System.Windows.SystemParameters]::VirtualScreenHeight - 5)
+    $rows = New-Object System.Collections.Generic.List[object]
+    foreach ($btn in $sample) {
+        $name = if ($btn.Name) { $btn.Name } else { [string]$btn.Content }
+        $backdrop = & $backdropOf $btn
+        $pt = $btn.PointToScreen((New-Object System.Windows.Point ($btn.ActualWidth / 2), ($btn.ActualHeight / 2)))
+        $states = [ordered]@{}
+        [void][SuiteStateUi]::SetCursorPos($px, $py); Start-Sleep -Milliseconds 400; & $pump $w 2
+        $states['normal'] = & $readState $btn $backdrop
+        [void]$w.Activate(); [void]$btn.Focus(); Start-Sleep -Milliseconds 500; & $pump $w 2
+        $focused = $btn.IsKeyboardFocused
+        $states['focus'] = & $readState $btn $backdrop
+        [void][SuiteStateUi]::SetCursorPos([int]$pt.X, [int]$pt.Y); Start-Sleep -Milliseconds 600; & $pump $w 2
+        $hover = $btn.IsMouseOver
+        $states['hover'] = & $readState $btn $backdrop
+        $pressed = $false
+        try {
+            [SuiteStateUi]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 500; & $pump $w 2
+            $pressed = $btn.IsPressed
+            $states['pressed'] = & $readState $btn $backdrop
+        }
+        finally {
+            # Leave the button before the mouse button goes up, so that no click happens. The mouse button always goes up.
+            [void][SuiteStateUi]::SetCursorPos($px, $py); Start-Sleep -Milliseconds 300
+            [SuiteStateUi]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 300
+        }
+        $rows.Add([pscustomobject]@{ Name = $name; Hover = $hover; Pressed = $pressed; Focused = $focused; States = $states })
+    }
+    return $rows.ToArray()
+}
+#endregion

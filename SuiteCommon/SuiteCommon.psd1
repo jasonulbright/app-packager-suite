@@ -60,6 +60,14 @@
         'Stop-SuiteBgWork'
         'Close-SuiteBgRunspace'
 
+        # Window test helpers
+        'Get-SuiteContrastRatio'
+        'Get-SuiteVisualDescendant'
+        'Test-SuiteVisibleInTree'
+        'Get-SuiteButtonRow'
+        'Get-SuiteWindowChrome'
+        'Get-SuiteButtonStateReport'
+
         # CM widgets
         'Build-CollectionTree'
         'Show-CollectionPickerDialog'
