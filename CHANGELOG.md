@@ -6,6 +6,8 @@
 
 - Darken the title bar of an inactive window so that the white title text reaches 4.5:1: `#5F6B7A` in the light theme (was `#4BA3E0`, 2.8:1) and `#6B6B6B` in the dark theme (was the MahApps `#808080`, 3.9:1).
 - Add SuiteCommon.Contrast.Tests.ps1. It checks the contrast of the palette pairs (text 4.5:1, borders 3:1) and creates no window.
+- Add Add-SuiteImplicitStyle. It gives the text box and the combo box of a themed window a Gray2 border (3:1 or more in both themes, the MahApps light border is 1.6:1) and the column header of a disabled grid the gray text of the other disabled controls. Update-SidebarButtonTheme, Set-ButtonTheme and Set-DialogTheme call it, so a tool takes the styles with the vendored copy. A window with an implicit style of its own for the type keeps it.
+- Add Invoke-ImplicitStyleSmoke.ps1, a window probe for the styles (lab or CI only).
 
 ## [2026.11.13.0083] - 2026-11-13
 
