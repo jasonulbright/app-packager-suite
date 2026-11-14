@@ -1,12 +1,20 @@
 # Changelog
 
-## [Unreleased]
+## [2026.11.14.0085] - 2026-11-14
 
-### Added
+## 12 components refreshed with plain ASCII sources and 1 px gray buttons
 
-- Add tools/Run-LabProbe.ps1 and tools/Run-VisibleProbe.ps1, the lab runners for tests without windows and for visible window tests.
-- Run the lab runners with -NonInteractive, end a run with no output for 10 minutes and report it as failed.
+### Installer
 
+- Carry all twelve components: App Packager 2026.11.14.0141, Collection Manager 2026.11.14.0026, Collection and Compliance Manager 2026.11.14.0021, Deployment Helper 2026.11.14.0024, Detection Method Tester 2026.11.14.0020, Device Inspector 2026.11.14.0014, DP Content Manager 2026.11.14.0020, Installer Analysis 2026.11.14.0026, Maintenance Window Manager 2026.11.14.0021, Pivots and Scripts 2026.11.14.0013, Site Hygiene 2026.11.14.0036 and Update Planner 2026.11.14.0009.
+- Show every button with a 1 px gray border instead of a heavy border in the text color.
+- Space the WQL Editor and the dialogs of the two collection tools on a 4 px grid.
+- Give the Options dialog of Collection Manager the shared title bar.
+
+### SuiteCommon
+
+- Make all PowerShell sources and the files they read plain ASCII, with no BOM, and add the encoding guard.
+- Add tools/Run-LabProbe.ps1 and tools/Run-VisibleProbe.ps1, the lab runners; both run non-interactive and end a run with no output for 10 minutes.
 ## [2026.11.14.0084] - 2026-11-14
 
 ## 12 components refreshed
