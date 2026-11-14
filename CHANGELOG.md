@@ -1,13 +1,22 @@
 # Changelog
 
-## [Unreleased]
+## [2026.11.14.0084] - 2026-11-14
+
+## 12 components refreshed
+
+### Installer
+
+- Carry all twelve components: App Packager 2026.11.13.0138, Collection Manager 2026.11.14.0023, Collection and Compliance Manager 2026.11.14.0019, Deployment Helper 2026.11.14.0023, Detection Method Tester 2026.11.14.0018, Device Inspector 2026.11.14.0013, DP Content Manager 2026.11.14.0019, Installer Analysis 2026.11.14.0025, Maintenance Window Manager 2026.11.14.0020, Pivots and Scripts 2026.11.14.0012, Site Hygiene 2026.11.14.0035 and Update Planner 2026.11.14.0008.
+- Show the title bar of an inactive window with white text at 4.5:1 contrast or more, in both themes.
+- Show text boxes, combo boxes and grid headers with a visible border and gray disabled text, in both themes.
+- Show the Options window of App Packager with 4.5:1 text contrast and 3:1 border contrast in both themes. A window probe checks it.
+- Add the Options page images to the App Packager user guide.
 
 ### SuiteCommon
 
 - Darken the title bar of an inactive window so that the white title text reaches 4.5:1: `#5F6B7A` in the light theme (was `#4BA3E0`, 2.8:1) and `#6B6B6B` in the dark theme (was the MahApps `#808080`, 3.9:1).
-- Add SuiteCommon.Contrast.Tests.ps1. It checks the contrast of the palette pairs (text 4.5:1, borders 3:1) and creates no window.
-- Add Add-SuiteImplicitStyle. It gives the text box and the combo box of a themed window a Gray2 border (3:1 or more in both themes, the MahApps light border is 1.6:1) and the column header of a disabled grid the gray text of the other disabled controls. Update-SidebarButtonTheme, Set-ButtonTheme and Set-DialogTheme call it, so a tool takes the styles with the vendored copy. A window with an implicit style of its own for the type keeps it.
-- Add Invoke-ImplicitStyleSmoke.ps1, a window probe for the styles (lab or CI only). SUITE_VISIBLE_WINDOWS=1 puts its windows on the desktop for a visible run.
+- Add Add-SuiteImplicitStyle. It gives the text box and the combo box of a themed window a Gray2 border and the column header of a disabled grid the gray text of the other disabled controls. Update-SidebarButtonTheme, Set-ButtonTheme and Set-DialogTheme call it.
+- Add SuiteCommon.Contrast.Tests.ps1 and Invoke-ImplicitStyleSmoke.ps1. The window probe shows its windows on the desktop when SUITE_VISIBLE_WINDOWS is 1.
 
 ## [2026.11.13.0083] - 2026-11-13
 
