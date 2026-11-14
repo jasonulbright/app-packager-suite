@@ -5,6 +5,8 @@
 
 .DESCRIPTION
     Shows MetroWindows off screen. The window tests run only on the lab or in CI (SUITE_ALLOW_WINDOW_TESTS=1).
+    SUITE_VISIBLE_WINDOWS=1 puts the windows at 80,80 and keeps each one on screen for about two seconds, for the visible run
+    of the lab (Run-VisibleProbe.ps1, labadmin session of CLIENT01). Without it the windows sit at -32000.
     Exit code 0 when every expectation holds.
 
     Run under Windows PowerShell 5.1:
@@ -59,9 +61,11 @@ function New-ProbeWindow {
 
 function Show-Offscreen {
     param($Window)
-    $Window.Left = -32000; $Window.Top = -32000; $Window.ShowInTaskbar = $false
+    # SUITE_VISIBLE_WINDOWS=1 (the visible lab run) puts the window on the desktop and keeps it there for a moment.
+    if ($env:SUITE_VISIBLE_WINDOWS -eq '1') { $Window.Left = 80; $Window.Top = 80; $Window.WindowStartupLocation = 'Manual' } else { $Window.Left = -32000; $Window.Top = -32000; $Window.ShowInTaskbar = $false }
     $Window.Show()
-    for ($i = 0; $i -lt 4; $i++) { $Window.UpdateLayout(); $Window.Dispatcher.Invoke([action] {}, [System.Windows.Threading.DispatcherPriority]::ApplicationIdle); Start-Sleep -Milliseconds 50 }
+    $passes = $(if ($env:SUITE_VISIBLE_WINDOWS -eq '1') { 40 } else { 4 })
+    for ($i = 0; $i -lt $passes; $i++) { $Window.UpdateLayout(); $Window.Dispatcher.Invoke([action] {}, [System.Windows.Threading.DispatcherPriority]::ApplicationIdle); Start-Sleep -Milliseconds 50 }
 }
 
 function Get-Hex { param($Brush) if ($Brush -is [System.Windows.Media.SolidColorBrush]) { return $Brush.Color.ToString() } return '' }
