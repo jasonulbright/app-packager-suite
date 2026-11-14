@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Add tools/Run-LabProbe.ps1 and tools/Run-VisibleProbe.ps1, the lab runners for tests without windows and for visible window tests.
+
 ## [2026.11.14.0084] - 2026-11-14
 
 ## 12 components refreshed
