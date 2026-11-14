@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### SuiteCommon
+
+- Darken the title bar of an inactive window so that the white title text reaches 4.5:1: `#5F6B7A` in the light theme (was `#4BA3E0`, 2.8:1) and `#6B6B6B` in the dark theme (was the MahApps `#808080`, 3.9:1).
+- Add SuiteCommon.Contrast.Tests.ps1. It checks the contrast of the palette pairs (text 4.5:1, borders 3:1) and creates no window.
+
 ## [2026.11.13.0083] - 2026-11-13
 
 ## 12 components refreshed
