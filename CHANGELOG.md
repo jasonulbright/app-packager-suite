@@ -4,7 +4,7 @@
 
 ### Added
 
-- Add toolsRun-LabProbe.ps1 and toolsRun-VisibleProbe.ps1, the lab runners for tests without windows and for visible window tests.
+- Add tools/Run-LabProbe.ps1 and tools/Run-VisibleProbe.ps1, the lab runners for tests without windows and for visible window tests.
 
 ## [2026.11.14.0084] - 2026-11-14
 
