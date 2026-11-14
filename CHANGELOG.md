@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026.11.14.0086] - 2026-11-14
+
+## 3 components refreshed with button state tests and ASCII sources
+
+### Installer
+
+- Carry Collection and Compliance Manager 2026.11.14.0023, Collection Manager 2026.11.14.0027 and Update Planner 2026.11.14.0010; the other nine components are unchanged.
+- Add a window test for the hover, focus and pressed states of buttons to the two collection tools.
+- Remove the BOM and every non-ASCII character from the sources of Collection and Compliance Manager.
+- Retake the Update Planner guide images with 1 px gray button borders.
 ## [2026.11.14.0085] - 2026-11-14
 
 ## 12 components refreshed with plain ASCII sources and 1 px gray buttons
