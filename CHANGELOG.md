@@ -32,7 +32,7 @@
 
 ### SuiteCommon
 
-- Add the shared footer: one style for all footer text (Segoe UI 11, normal weight and style, same in light and dark) and the connection text Site MCM · cm01.contoso.com (Initialize-SuiteFooter, Update-SuiteFooter, Format-SuiteFooterSite, Get-SuiteFooterStyle).
+- Add the shared footer: one style for all footer text (Segoe UI 11, normal weight and style, same in light and dark) and the connection text "Site MCM", a middle dot and "cm01.contoso.com" (Initialize-SuiteFooter, Update-SuiteFooter, Format-SuiteFooterSite, Get-SuiteFooterStyle).
 
 ### Launcher
 

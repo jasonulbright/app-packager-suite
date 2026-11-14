@@ -172,10 +172,10 @@ Describe 'Read-SuiteSettings' {
 
     It 'decodes BOM-less UTF-8 files correctly' {
         $p = Join-Path $TestDrive 'nobom.json'
-        $json = '{ "SiteCode": "Zoë" }'
+        $json = ('{ "SiteCode": "Zo' + [char]0x00EB + '" }')
         [System.IO.File]::WriteAllText($p, $json, [System.Text.UTF8Encoding]::new($false))
         $s = Read-SuiteSettings -Path $p -Defaults @{ SiteCode = '' }
-        $s.SiteCode | Should -Be 'Zoë'
+        $s.SiteCode | Should -Be ('Zo' + [char]0x00EB)
     }
 
     # A hashtable member access with a key of the same name returns the key's

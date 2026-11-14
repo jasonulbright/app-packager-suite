@@ -7,7 +7,7 @@
 
 Shared core module (`SuiteCommon`) for a family of Configuration
 Manager admin tools. Each consumer tool carries a vendored copy at
-`Lib\SuiteCommon\` so every tool stays fully standalone — no module
+`Lib\SuiteCommon\` so every tool stays fully standalone - no module
 installation, no gallery dependency.
 
 ## What SuiteCommon provides
@@ -42,12 +42,12 @@ variable; a provider machine can be supplied via parameter or
 tool, discovered as sibling folders of this repository (override the
 root in `suite.settings.json`), with each tool's version read from its
 CHANGELOG. Every tile launches its tool as a separate process. The
-connection profile — site code and SMS provider — is entered once and
+connection profile - site code and SMS provider - is entered once and
 handed to each launch through the `SUITE_CM_PROVIDER` /
 `SUITE_CM_SITECODE` environment variables; `Connect-CMSite` falls back
 to the provider variable, so tools connect without per-tool
 configuration. The footer shows the saved site code and site server as
-text, for example `Site MCM · cm01.contoso.com`. The two boxes at the top
+text: the site code with "Site", a middle dot, then the site server (for example "Site MCM", middle dot, "cm01.contoso.com"). The two boxes at the top
 of the launcher window are the place to edit them. The launcher embeds no
 tools and hosts no plugins.
 

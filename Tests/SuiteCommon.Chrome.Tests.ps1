@@ -359,7 +359,7 @@ Describe 'Suite theme: state contrast in both themes' {
 
 Describe 'Suite footer: one shared style and the connection text' {
 
-    It 'formats the site connection as "Site MCM · cm01.contoso.com"' {
+    It ('formats the site connection as "Site MCM ' + [char]0x00B7 + ' cm01.contoso.com"') {
         $dot = [string][char]0x00B7
         Format-SuiteFooterSite -SiteCode 'MCM' -SiteServer 'cm01.contoso.com' | Should -Be ("Site MCM $dot cm01.contoso.com")
     }
