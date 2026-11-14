@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### SuiteCommon
+
+- Add the window test helpers `Get-SuiteButtonStateReport`, `Get-SuiteWindowChrome`, `Get-SuiteButtonRow`, `Get-SuiteContrastRatio`, `Get-SuiteVisualDescendant` and `Test-SuiteVisibleInTree`, so that the hover, focus and pressed state test and the dialog chrome test of every app share one measurement.
+
 ## [2026.11.14.0086] - 2026-11-14
 
 ## 3 components refreshed with button state tests and ASCII sources
