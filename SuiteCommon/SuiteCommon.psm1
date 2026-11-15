@@ -1372,10 +1372,10 @@ function Show-ThemedMessage {
         <TextBlock x:Name="txtIcon" Grid.Row="0" Grid.Column="0" FontSize="20" VerticalAlignment="Top" Margin="0,0,14,0"/>
         <TextBlock x:Name="txtMsg"  Grid.Row="0" Grid.Column="1" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"/>
         <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
-            <Button x:Name="btnPrimary"   MinWidth="90" Height="32" Margin="0,0,8,0" IsDefault="True"
+            <Button x:Name="btnPrimary"   BorderThickness="1" BorderBrush="{DynamicResource MahApps.Brushes.AccentBase}" MinWidth="90" Height="32" Margin="0,0,8,0" IsDefault="True"
                     Style="{DynamicResource MahApps.Styles.Button.Square.Accent}"
                     Controls:ControlsHelper.ContentCharacterCasing="Normal"/>
-            <Button x:Name="btnSecondary" MinWidth="90" Height="32" IsCancel="True" Visibility="Collapsed"
+            <Button x:Name="btnSecondary" BorderThickness="1" BorderBrush="{DynamicResource MahApps.Brushes.Gray2}" MinWidth="90" Height="32" IsCancel="True" Visibility="Collapsed"
                     Style="{DynamicResource MahApps.Styles.Button.Square}"
                     Controls:ControlsHelper.ContentCharacterCasing="Normal"/>
         </StackPanel>
@@ -1755,12 +1755,12 @@ function Show-CollectionPickerDialog {
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Themes/Dark.Steel.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <Style x:Key="DialogButton" TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button.Square}">
-                <Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
+                <Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.Gray2}"/><Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
                 <Setter Property="Margin" Value="0,0,8,0"/>
                 <Setter Property="Controls:ControlsHelper.ContentCharacterCasing" Value="Normal"/>
             </Style>
             <Style x:Key="DialogAccentButton" TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button.Square.Accent}">
-                <Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
+                <Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.AccentBase}"/><Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
                 <Setter Property="Margin" Value="0,0,8,0"/>
                 <Setter Property="Controls:ControlsHelper.ContentCharacterCasing" Value="Normal"/>
             </Style>

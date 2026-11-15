@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Draw the buttons of the themed message box and the collection picker with a 1 px border (gray, accent for the primary button) instead of a 2 px border in the text color.
+
 ### SuiteCommon
 
 - Add the window test helpers `Get-SuiteButtonStateReport`, `Get-SuiteWindowChrome`, `Get-SuiteButtonRow`, `Get-SuiteContrastRatio`, `Get-SuiteVisualDescendant` and `Test-SuiteVisibleInTree`, so that the hover, focus and pressed state test and the dialog chrome test of every app share one measurement.
