@@ -1504,6 +1504,8 @@ function Show-ThemedMessage {
         $dlg.GlowBrush                 = $Owner.GlowBrush
         $dlg.NonActiveGlowBrush        = $Owner.NonActiveGlowBrush
     } catch { $null = $_ }
+    # The caption text of the window state and the button templates of the dialog styles (safe before the theme is initialized).
+    try { Register-SuiteTitleForeground -Window $dlg; Set-SuiteAccentButtonResource -Window $dlg } catch { $null = $_ }
 
     $dlg.Title   = $Title
     $txtIcon     = $dlg.FindName('txtIcon')
@@ -1636,6 +1638,8 @@ function Show-ConfirmDialog {
         $dlg.GlowBrush                 = $Owner.GlowBrush
         $dlg.NonActiveGlowBrush        = $Owner.NonActiveGlowBrush
     } catch { $null = $_ }
+    # The caption text of the window state and the button templates of the dialog styles (safe before the theme is initialized).
+    try { Register-SuiteTitleForeground -Window $dlg; Set-SuiteAccentButtonResource -Window $dlg } catch { $null = $_ }
     $dlg.FindName('txtMsg').Text = $Message
     $dlg.FindName('btnYes').Add_Click({ $dlg.DialogResult = $true;  $dlg.Close() })
     $dlg.FindName('btnNo').Add_Click({  $dlg.DialogResult = $false; $dlg.Close() })
