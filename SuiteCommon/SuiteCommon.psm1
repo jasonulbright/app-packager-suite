@@ -2335,6 +2335,60 @@ function Get-SuiteWindowChrome {
     }
 }
 
+function Get-SuiteRelativeLuminance {
+    <#
+    .SYNOPSIS
+        WCAG relative luminance of a color (0 black to 1 white).
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][System.Windows.Media.Color]$Color)
+    $f = { param($v) $v = $v / 255.0; if ($v -le 0.04045) { $v / 12.92 } else { [math]::Pow(($v + 0.055) / 1.055, 2.4) } }
+    return (0.2126 * (& $f $Color.R) + 0.7152 * (& $f $Color.G) + 0.0722 * (& $f $Color.B))
+}
+
+function Get-SuiteWindowBody {
+    <#
+    .SYNOPSIS
+        Body colors of a shown window: surface, text, and the input controls (text boxes, combo boxes, lists, grids).
+    .DESCRIPTION
+        BackLuminance tells a light surface from a dark one. TextRatio is the contrast of the window text on the surface.
+        Each input row has the luminance of its background, the contrast of its text on that background and the contrast of
+        its border on the surface. A dark dialog body in the light theme (or the other way round) shows in BackLuminance.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Window, [string]$Label = '')
+    $solid = { param($b) if ($b -is [System.Windows.Media.SolidColorBrush]) { $b.Color } else { $null } }
+    $over = {
+        param($c, $bg)
+        $a = $c.A / 255.0
+        [System.Windows.Media.Color]::FromRgb([byte]($c.R * $a + $bg.R * (1 - $a)), [byte]($c.G * $a + $bg.G * (1 - $a)), [byte]($c.B * $a + $bg.B * (1 - $a)))
+    }
+    $back = & $solid $Window.Background
+    if (-not $back) { $back = [System.Windows.Media.Colors]::Transparent }
+    $text = & $solid $Window.Foreground
+    $rows = New-Object System.Collections.Generic.List[object]
+    $kinds = 'TextBox', 'PasswordBox', 'ComboBox', 'ListBox', 'ListView', 'DataGrid', 'TreeView', 'DatePicker'
+    foreach ($d in (Get-SuiteVisualDescendant -Element $Window)) {
+        $kind = $d.GetType().Name
+        if ($kind -notin $kinds -or -not (Test-SuiteVisibleInTree -Element $d) -or $d.ActualWidth -lt 10) { continue }
+        $bg = & $solid $d.Background
+        $fg = & $solid $d.Foreground
+        $bd = & $solid $d.BorderBrush
+        $bgOpaque = if ($bg -and $back) { & $over $bg $back } else { $back }
+        $row = [ordered]@{ Kind = $kind; Name = [string]$d.Name; BackLuminance = $null; TextRatio = $null; BorderRatio = $null }
+        if ($bgOpaque) { $row.BackLuminance = [math]::Round((Get-SuiteRelativeLuminance -Color $bgOpaque), 3) }
+        if ($bgOpaque -and $fg) { $row.TextRatio = [math]::Round((Get-SuiteContrastRatio -Foreground (& $over $fg $bgOpaque) -Background $bgOpaque), 2) }
+        if ($bd -and $back -and $d.BorderThickness.Left -gt 0) { $row.BorderRatio = [math]::Round((Get-SuiteContrastRatio -Foreground (& $over $bd $back) -Background $back), 2) }
+        $rows.Add([pscustomobject]$row)
+    }
+    return [pscustomobject]@{
+        Title         = [string]$Window.Title
+        Label         = $Label
+        BackLuminance = $(if ($back.A -gt 0) { [math]::Round((Get-SuiteRelativeLuminance -Color $back), 3) } else { $null })
+        TextRatio     = $(if ($back.A -gt 0 -and $text) { [math]::Round((Get-SuiteContrastRatio -Foreground $text -Background $back), 2) } else { $null })
+        Inputs        = $rows.ToArray()
+    }
+}
 function Get-SuiteButtonStateReport {
     <#
     .SYNOPSIS

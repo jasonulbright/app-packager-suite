@@ -66,6 +66,8 @@
         'Test-SuiteVisibleInTree'
         'Get-SuiteButtonRow'
         'Get-SuiteWindowChrome'
+        'Get-SuiteWindowBody'
+        'Get-SuiteRelativeLuminance'
         'Get-SuiteButtonStateReport'
 
         # CM widgets
