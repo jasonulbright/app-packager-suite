@@ -945,7 +945,8 @@ function Initialize-SuiteTheme {
     $bc = [System.Windows.Media.BrushConverter]::new()
     $b = @{
         TitleBarActive    = $bc.ConvertFrom('#0078D4')
-        TitleBarInactive  = $bc.ConvertFrom('#5F6B7A')
+        TitleBarInactive  = $bc.ConvertFrom('#4BA3E0')
+        TitleBarInactiveText = $bc.ConvertFrom('#333333')
         DarkTitleBarInactive = $bc.ConvertFrom('#6B6B6B')
         DarkButtonBg      = $bc.ConvertFrom('#1E1E1E')
         DarkButtonBorder  = $bc.ConvertFrom('#8C8C8C')
@@ -960,6 +961,14 @@ function Initialize-SuiteTheme {
         LogLabelDark      = $bc.ConvertFrom('#B0B0B0')
         LogLabelLight     = $bc.ConvertFrom('#595959')
         OnBlue            = $bc.ConvertFrom('#FFFFFF')
+        AccentHoverLight  = $bc.ConvertFrom('#006CBE')
+        AccentPressedLight = $bc.ConvertFrom('#005A9E')
+        AccentHoverDark   = $bc.ConvertFrom('#5E6F80')
+        AccentPressedDark = $bc.ConvertFrom('#53626F')
+        NeutralHoverLight = $bc.ConvertFrom('#E6E6E6')
+        NeutralPressedLight = $bc.ConvertFrom('#CFCFCF')
+        NeutralHoverDark  = $bc.ConvertFrom('#3A3A3A')
+        NeutralPressedDark = $bc.ConvertFrom('#4A4A4A')
     }
     if ($Brushes) { foreach ($k in $Brushes.Keys) { $b[$k] = $Brushes[$k] } }
     $script:SuiteTheme = @{
@@ -1002,6 +1011,99 @@ function Update-TitleBarBrushes {
         $Window.WindowTitleBrush          = $ctx.Brushes.TitleBarActive
         $Window.NonActiveWindowTitleBrush = $ctx.Brushes.TitleBarInactive
     }
+    Register-SuiteTitleForeground -Window $Window -IsDark $IsDark
+    Set-SuiteAccentButtonResource -Window $Window -IsDark $IsDark
+}
+
+function Set-SuiteAccentButtonResource {
+    <#
+    .SYNOPSIS
+        Gives a window the explicit hover and pressed brushes of the accent button, and the template that uses them.
+    .DESCRIPTION
+        The MahApps accent button turns black (light theme) or white (dark theme) when pressed. A style that sets
+        Template to {DynamicResource SuiteAccentButtonTemplate} keeps the fill blue in every state: hover is one
+        darker step, pressed one more, white bold text stays at 4.5:1 or more. The brushes follow the theme and
+        change when the theme changes, because the template reads them with DynamicResource.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Adds resources to one window only.')]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Window, [Nullable[bool]]$IsDark)
+    if ($Window -isnot [System.Windows.FrameworkElement]) { return }
+    $ctx = Get-SuiteThemeContext
+    $dark = if ($null -ne $IsDark) { [bool]$IsDark } else { [bool](& $ctx.IsDarkGetter) }
+    if (-not $Window.Resources.Contains('SuiteAccentButtonTemplate')) {
+        $xaml = @'
+<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="Button">
+    <Border x:Name="Bd"
+            Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+            BorderThickness="{TemplateBinding BorderThickness}" SnapsToDevicePixels="True">
+        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                          Margin="{TemplateBinding Padding}" RecognizesAccessKey="True" SnapsToDevicePixels="True"/>
+    </Border>
+    <ControlTemplate.Triggers>
+        <Trigger Property="IsMouseOver" Value="True">
+            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SuiteAccentHover}"/>
+        </Trigger>
+        <Trigger Property="IsKeyboardFocused" Value="True">
+            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.ThemeForeground}"/>
+        </Trigger>
+        <Trigger Property="IsPressed" Value="True">
+            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SuiteAccentPressed}"/>
+        </Trigger>
+        <Trigger Property="IsEnabled" Value="False">
+            <Setter TargetName="Bd" Property="Opacity" Value="0.5"/>
+        </Trigger>
+    </ControlTemplate.Triggers>
+</ControlTemplate>
+'@
+        $Window.Resources['SuiteAccentButtonTemplate'] = [System.Windows.Markup.XamlReader]::Parse($xaml)
+    }
+    if (-not $Window.Resources.Contains('SuiteNeutralButtonTemplate')) {
+        # The same template for the normal button: its own fill and border stay, hover and pressed move one step in the neutral family.
+        $neutral = $xaml.Replace('SuiteAccentHover', 'SuiteNeutralHover').Replace('SuiteAccentPressed', 'SuiteNeutralPressed')
+        $Window.Resources['SuiteNeutralButtonTemplate'] = [System.Windows.Markup.XamlReader]::Parse($neutral)
+    }
+    $Window.Resources['SuiteNeutralHover'] = $(if ($dark) { $ctx.Brushes.NeutralHoverDark } else { $ctx.Brushes.NeutralHoverLight })
+    $Window.Resources['SuiteNeutralPressed'] = $(if ($dark) { $ctx.Brushes.NeutralPressedDark } else { $ctx.Brushes.NeutralPressedLight })
+    $hover = if ($dark) { $ctx.Brushes.AccentHoverDark } else { $ctx.Brushes.AccentHoverLight }
+    $pressed = if ($dark) { $ctx.Brushes.AccentPressedDark } else { $ctx.Brushes.AccentPressedLight }
+    $Window.Resources['SuiteAccentHover'] = $hover
+    $Window.Resources['SuiteAccentPressed'] = $pressed
+}
+
+function Set-SuiteTitleForeground {
+    <#
+    .SYNOPSIS
+        Sets the caption text of a MetroWindow for its state: light theme, inactive: dark gray on the light blue bar;
+        every other state keeps the library text (white on the active blue bar and on the dark bars).
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Mutates in-window brush properties only; no external state.')]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Window, [Nullable[bool]]$IsDark)
+    $ctx = Get-SuiteThemeContext
+    $dark = if ($null -ne $IsDark) { [bool]$IsDark } else { [bool](& $ctx.IsDarkGetter) }
+    if (-not $dark -and -not $Window.IsActive) {
+        $Window.TitleForeground = $ctx.Brushes.TitleBarInactiveText
+    } else {
+        $Window.ClearValue([MahApps.Metro.Controls.MetroWindow]::TitleForegroundProperty)
+    }
+}
+
+function Register-SuiteTitleForeground {
+    <#
+    .SYNOPSIS
+        Gives a MetroWindow the caption text of its state now and whenever it is activated or deactivated.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Mutates in-window brush properties only; no external state.')]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Window, [Nullable[bool]]$IsDark)
+    if (-not $Window.Resources.Contains('SuiteTitleForegroundHooked')) {
+        $Window.Resources['SuiteTitleForegroundHooked'] = $true
+        $Window.Add_Activated({ param($sender, $e) try { Set-SuiteTitleForeground -Window $sender } catch { $null = $_ } })
+        $Window.Add_Deactivated({ param($sender, $e) try { Set-SuiteTitleForeground -Window $sender } catch { $null = $_ } })
+    }
+    Set-SuiteTitleForeground -Window $Window -IsDark $IsDark
 }
 
 # Light theme paints buttons blue. A plain MahApps Square button keeps the dark
@@ -1320,6 +1422,8 @@ function Set-DialogTheme {
         $Dialog.WindowTitleBrush          = $ctx.Brushes.TitleBarActive
         $Dialog.NonActiveWindowTitleBrush = $ctx.Brushes.TitleBarInactive
     }
+    Register-SuiteTitleForeground -Window $Dialog -IsDark $IsDark
+    Set-SuiteAccentButtonResource -Window $Dialog -IsDark $IsDark
 }
 
 # =============================================================================
@@ -1373,10 +1477,10 @@ function Show-ThemedMessage {
         <TextBlock x:Name="txtMsg"  Grid.Row="0" Grid.Column="1" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"/>
         <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
             <Button x:Name="btnPrimary"   BorderThickness="1" BorderBrush="{DynamicResource MahApps.Brushes.AccentBase}" MinWidth="90" Height="32" Margin="0,0,8,0" IsDefault="True"
-                    Style="{DynamicResource MahApps.Styles.Button.Square.Accent}"
+                    Style="{DynamicResource MahApps.Styles.Button.Square.Accent}" Template="{DynamicResource SuiteAccentButtonTemplate}"
                     Controls:ControlsHelper.ContentCharacterCasing="Normal"/>
             <Button x:Name="btnSecondary" BorderThickness="1" BorderBrush="{DynamicResource MahApps.Brushes.Gray2}" MinWidth="90" Height="32" IsCancel="True" Visibility="Collapsed"
-                    Style="{DynamicResource MahApps.Styles.Button.Square}"
+                    Style="{DynamicResource MahApps.Styles.Button.Square}" Template="{DynamicResource SuiteNeutralButtonTemplate}"
                     Controls:ControlsHelper.ContentCharacterCasing="Normal"/>
         </StackPanel>
     </Grid>
@@ -1490,11 +1594,13 @@ function Show-ConfirmDialog {
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Themes/Dark.Steel.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <Style x:Key="DialogButton" TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button.Square}">
+                <Setter Property="Template" Value="{DynamicResource SuiteNeutralButtonTemplate}"/>
                 <Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.Gray2}"/><Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
                 <Setter Property="Margin" Value="0,0,8,0"/>
                 <Setter Property="Controls:ControlsHelper.ContentCharacterCasing" Value="Normal"/>
             </Style>
             <Style x:Key="DialogAccentButton" TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button.Square.Accent}">
+                <Setter Property="Template" Value="{DynamicResource SuiteAccentButtonTemplate}"/>
                 <Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.AccentBase}"/><Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
                 <Setter Property="Margin" Value="0,0,8,0"/>
                 <Setter Property="Controls:ControlsHelper.ContentCharacterCasing" Value="Normal"/>
@@ -1755,11 +1861,13 @@ function Show-CollectionPickerDialog {
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Themes/Dark.Steel.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <Style x:Key="DialogButton" TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button.Square}">
+                <Setter Property="Template" Value="{DynamicResource SuiteNeutralButtonTemplate}"/>
                 <Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.Gray2}"/><Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
                 <Setter Property="Margin" Value="0,0,8,0"/>
                 <Setter Property="Controls:ControlsHelper.ContentCharacterCasing" Value="Normal"/>
             </Style>
             <Style x:Key="DialogAccentButton" TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button.Square.Accent}">
+                <Setter Property="Template" Value="{DynamicResource SuiteAccentButtonTemplate}"/>
                 <Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.AccentBase}"/><Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
                 <Setter Property="Margin" Value="0,0,8,0"/>
                 <Setter Property="Controls:ControlsHelper.ContentCharacterCasing" Value="Normal"/>
@@ -2319,9 +2427,11 @@ function Get-SuiteWindowChrome {
     param([Parameter(Mandatory)]$Window, [string]$Label = '')
     $hex = { param($b) if ($b -is [System.Windows.Media.SolidColorBrush]) { $b.Color.ToString() } else { '' } }
     $act = $Window.WindowTitleBrush
+    # The bar in effect: the active brush while the window is active, the inactive brush otherwise. The caption text is measured on it.
+    $now = if ($Window.IsActive) { $act } else { $Window.NonActiveWindowTitleBrush }
     $text = if ($Window.TitleForeground -is [System.Windows.Media.SolidColorBrush]) { $Window.TitleForeground.Color } else { [System.Windows.Media.Colors]::White }
     $ratio = 0.0
-    if ($act -is [System.Windows.Media.SolidColorBrush]) { $ratio = [math]::Round((Get-SuiteContrastRatio -Foreground $text -Background $act.Color), 2) }
+    if ($now -is [System.Windows.Media.SolidColorBrush]) { $ratio = [math]::Round((Get-SuiteContrastRatio -Foreground $text -Background $now.Color), 2) }
     $themeText = ''
     try { $themeText = & $hex $Window.FindResource('MahApps.Brushes.ThemeForeground') } catch { $null = $_ }
     return [pscustomobject]@{
@@ -2329,6 +2439,9 @@ function Get-SuiteWindowChrome {
         Label      = $Label
         Active     = (& $hex $act)
         Inactive   = (& $hex $Window.NonActiveWindowTitleBrush)
+        IsActive   = [bool]$Window.IsActive
+        TitleBrushNow = (& $hex $now)
+        TitleText  = $text.ToString()
         TitleRatio = $ratio
         ThemeText  = $themeText
         Buttons    = @(Get-SuiteButtonRow -Window $Window -Label $Label)
@@ -2479,7 +2592,7 @@ function Get-SuiteButtonStateReport {
         $edge = 0.0
         if ($border) { $edge = [math]::Max($edge, (Get-SuiteContrastRatio -Foreground (& $over $border $backdrop) -Background $backdrop)) }
         if ($fill) { $edge = [math]::Max($edge, (Get-SuiteContrastRatio -Foreground $fillOpaque -Background $backdrop)) }
-        [pscustomobject]@{ Text = [math]::Round((Get-SuiteContrastRatio -Foreground $textOpaque -Background $fillOpaque), 2); Edge = [math]::Round($edge, 2) }
+        [pscustomobject]@{ Text = [math]::Round((Get-SuiteContrastRatio -Foreground $textOpaque -Background $fillOpaque), 2); Edge = [math]::Round($edge, 2); Fill = $fillOpaque.ToString(); FillLuminance = [math]::Round((Get-SuiteRelativeLuminance -Color $fillOpaque), 4); Blue = (($fillOpaque.B - $fillOpaque.R) -ge 20) }
     }
     $seen = @{}
     $sample = New-Object System.Collections.Generic.List[object]

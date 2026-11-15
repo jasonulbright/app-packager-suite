@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Show the inactive light title bar in light blue (#4BA3E0) with dark gray caption text at 4.6:1, not grey.
+- Keep accent and neutral buttons in their family when hovered or pressed; pressed accent buttons no longer turn black.
+
 ### SuiteCommon
 
 - Add Close-SuiteOpenWindow, which closes every WPF window left open in a runspace, so a window test never leaves a window on the lab desktop.
