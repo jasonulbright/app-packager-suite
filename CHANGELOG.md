@@ -2,38 +2,26 @@
 
 ## [Unreleased]
 
-### Fixed
+## [2026.11.15.0087] - 2026-11-15
 
-- End a hung or silent lab window run from a watchdog on the lab computer, also when the runner on the dev PC is gone.
+## 11 components refreshed with blue pressed buttons and a light blue inactive title bar
 
-### Fixed
+### Installer
 
-- Give the message box and confirm dialog the inactive caption text and the button templates, so the inactive title text passes 4.5:1.
-
-### SuiteCommon
-
-- Add Get-SuiteTitleBarContrast, the contrast of each title bar state with its own caption text, for window contrast probes.
-
-### Fixed
-
-- Show the inactive light title bar in light blue (#4BA3E0) with dark gray caption text at 4.6:1, not grey.
-- Keep accent and neutral buttons in their family when hovered or pressed; pressed accent buttons no longer turn black.
+- Carry Collection and Compliance Manager 2026.11.15.0026, Collection Manager 2026.11.15.0029 and Deployment Helper 2026.11.15.0026.
+- Carry Detection Method Tester 2026.11.15.0022, Device Inspector 2026.11.15.0016 and DP Content Manager 2026.11.15.0022.
+- Carry Installer Analysis 2026.11.15.0028, Maintenance Window Manager 2026.11.15.0023 and Pivots and Scripts 2026.11.15.0015.
+- Carry Site Hygiene 2026.11.15.0038 and Update Planner 2026.11.15.0012; App Packager 2026.11.14.0141 is unchanged.
+- Keep pressed buttons blue or neutral in every app; they no longer turn black or white.
+- Show the inactive light title bar in light blue with dark gray caption text at 4.6:1.
+- Retake every guide image and README screenshot of the components with these changes.
 
 ### SuiteCommon
 
-- Add Close-SuiteOpenWindow, which closes every WPF window left open in a runspace, so a window test never leaves a window on the lab desktop.
-
-### Fixed
-
-- Draw the buttons of the themed confirm dialog (Show-ConfirmDialog) with a 1 px border (gray, accent for the primary button) instead of a 2 px border in the text color.
-
-### Fixed
-
-- Draw the buttons of the themed message box and the collection picker with a 1 px border (gray, accent for the primary button) instead of a 2 px border in the text color.
-
-### SuiteCommon
-
-- Add the window test helpers `Get-SuiteButtonStateReport`, `Get-SuiteWindowChrome`, `Get-SuiteButtonRow`, `Get-SuiteContrastRatio`, `Get-SuiteVisualDescendant` and `Test-SuiteVisibleInTree`, so that the hover, focus and pressed state test and the dialog chrome test of every app share one measurement.
+- Give accent and neutral buttons explicit hover and pressed fills through shared button templates.
+- Give the message box and confirm dialog 1 px button borders, the inactive caption text and the button templates.
+- Add window test helpers for button states, dialog bodies, title bar contrast and closing stray windows.
+- End a hung or silent lab window run from a watchdog on the lab computer.
 
 ## [2026.11.14.0086] - 2026-11-14
 
