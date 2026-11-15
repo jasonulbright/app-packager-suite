@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Treat a lab lock in an unknown format as blocking: report it, wait, never remove it.
+
 ## [2026.11.15.0088] - 2026-11-15
 
 ## 11 components refreshed so disabled controls look dimmed
