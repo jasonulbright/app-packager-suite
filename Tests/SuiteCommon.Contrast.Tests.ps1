@@ -49,13 +49,31 @@ Describe 'SuiteCommon palette contrast' {
     }
 
     It 'gives white text 4.5:1 on <Name>' -ForEach @(
-        @{ Name = 'TitleBarActive' }, @{ Name = 'TitleBarInactive' }, @{ Name = 'DarkTitleBarInactive' },
+        @{ Name = 'TitleBarActive' }, @{ Name = 'DarkTitleBarInactive' },
         @{ Name = 'LightWfBg' }, @{ Name = 'LightActiveBg' }, @{ Name = 'LightOptBg' }
     ) {
         $script:Pal.ContainsKey($Name) | Should -BeTrue
         (Get-Ratio $script:Pal['OnBlue'] $script:Pal[$Name]) | Should -BeGreaterOrEqual 4.5
     }
 
+    It 'keeps every title bar state between 4.5:1 and 5.5:1 with the text of its own state (aim at 4.5, do not overshoot)' -ForEach @(
+        @{ State = 'light active'; Text = 'OnBlue'; Bar = 'TitleBarActive' }
+        @{ State = 'light inactive'; Text = 'TitleBarInactiveText'; Bar = 'TitleBarInactive' }
+        @{ State = 'dark inactive'; Text = 'OnBlue'; Bar = 'DarkTitleBarInactive' }
+    ) {
+        $r = Get-Ratio $script:Pal[$Text] $script:Pal[$Bar]
+        $r | Should -BeGreaterOrEqual 4.5 -Because $State
+        $r | Should -BeLessOrEqual 5.5 -Because ('{0}: a ratio far above 4.5 is visually disruptive' -f $State)
+    }
+
+    It 'keeps the light inactive title bar light blue with dark text' {
+        $script:Pal['TitleBarInactive'] | Should -Be '#4BA3E0'
+        (Get-Ratio '#000000' $script:Pal['TitleBarInactiveText']) | Should -BeLessThan 3 -Because 'the caption text is dark, but not black'
+    }
+
+    It 'tells the light inactive title bar from the dark inactive one (blue, not grey)' {
+        (Get-Ratio $script:Pal['TitleBarInactive'] $script:Pal['DarkTitleBarInactive']) | Should -BeGreaterOrEqual 1.5
+    }
     It 'shows the log label with 4.5:1 on its backdrop' {
         (Get-Ratio $script:Pal['LogLabelDark'] $script:DarkBack) | Should -BeGreaterOrEqual 4.5
         (Get-Ratio $script:Pal['LogLabelLight'] $script:LightBack) | Should -BeGreaterOrEqual 4.5
