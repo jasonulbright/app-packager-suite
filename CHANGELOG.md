@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Give the message box and confirm dialog the inactive caption text and the button templates, so the inactive title text passes 4.5:1.
+
 ### SuiteCommon
 
 - Add Get-SuiteTitleBarContrast, the contrast of each title bar state with its own caption text, for window contrast probes.
