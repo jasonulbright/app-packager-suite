@@ -44,7 +44,30 @@ $leaf = Split-Path $Worktree -Leaf
 $dest = "C:\guide\visible-$leaf"
 $task = "VisibleProbe-$leaf"
 $s = New-PSSession -ComputerName $Target -Credential $LabCredential
+# One window run at a time on the lab computer: the exclusive lock file C:\guide\capture.lock (the file the guide captures use).
+# Its text is owner|pid|start time. A lock whose last write is older than 30 minutes is stale (a holder refreshes it every poll).
+$lockPath = 'C:\guide\capture.lock'
+$lockToken = '{0}|{1}|{2}' -f $leaf, $PID, (Get-Date -Format s)
+$haveLock = $false
 try {
+    $lockWaitEnd = (Get-Date).AddMinutes(90)
+    while (-not $haveLock) {
+        $got = Invoke-Command $s {
+            param($path, $token)
+            New-Item -ItemType Directory -Force (Split-Path $path) | Out-Null
+            try { New-Item -ItemType File -Path $path -ErrorAction Stop | Out-Null; Set-Content -LiteralPath $path -Value $token -Encoding Ascii; 'taken' }
+            catch {
+                $item = Get-Item -LiteralPath $path -ErrorAction SilentlyContinue
+                if ($item -and ((Get-Date) - $item.LastWriteTime).TotalMinutes -gt 30) { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue; 'stale' }
+                else { 'busy: ' + ((Get-Content -LiteralPath $path -ErrorAction SilentlyContinue) -join ' ') }
+            }
+        } -ArgumentList $lockPath, $lockToken
+        if ($got -eq 'taken') { $haveLock = $true }
+        elseif ((Get-Date) -gt $lockWaitEnd) { throw "The lab lock $lockPath stayed taken for 90 minutes ($got)." }
+        elseif ($got -ne 'stale') { Start-Sleep -Seconds 20 }
+    }
+    # Under the lock no other run is active: end the left-over PowerShell processes of earlier runs and captures (their windows go with them).
+    Invoke-Command $s { Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like '*C:\guide\*' -and $_.ProcessId -ne $PID } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } }
     Invoke-Command $s { param($d) Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like "*$d\*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }; Start-Sleep 1; if (Test-Path $d) { Remove-Item $d -Recurse -Force }; New-Item -ItemType Directory $d -Force | Out-Null } -ArgumentList $dest
     foreach ($i in Get-ChildItem -LiteralPath $Worktree -Force | Where-Object { $_.Name -ne '.git' }) { Copy-Item -LiteralPath $i.FullName -Destination "$dest\$($i.Name)" -ToSession $s -Recurse -Force }
     Invoke-Command $s {
@@ -66,6 +89,7 @@ try {
         Start-Sleep 5
         $state = Invoke-Command $s { param($d) [pscustomobject]@{ Done = (Test-Path "$d\.done"); Length = $(if (Test-Path "$d\.out.txt") { (Get-Item "$d\.out.txt").Length } else { 0 }) } } -ArgumentList $dest
         $done = $state.Done
+        Invoke-Command $s { param($path) $i = Get-Item -LiteralPath $path -ErrorAction SilentlyContinue; if ($i) { $i.LastWriteTime = Get-Date } } -ArgumentList $lockPath
         if ($state.Length -ne $lastLength) { $lastLength = $state.Length; $lastGrowth = Get-Date }
         if (-not $done -and ((Get-Date) - $lastGrowth).TotalMinutes -ge $QuietMinutes) { $failure = "FAIL: no output for $QuietMinutes minutes; the run was ended."; break }
     } while (-not $done -and (Get-Date) -lt $end)
@@ -75,11 +99,16 @@ try {
         Invoke-Command $s { param($d) Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like "*$d\*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force } } -ArgumentList $dest
     }
     $text = Invoke-Command $s { param($d) if (Test-Path "$d\.out.txt") { Get-Content "$d\.out.txt" -Raw } } -ArgumentList $dest
+    # A run that leaves a window or process behind fails: any PowerShell process of C:\guide that is not the check itself is stray.
+    $stray = @(Invoke-Command $s { param($d) Start-Sleep -Seconds 3; Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like '*C:\guide\*' -and $_.ProcessId -ne $PID } | ForEach-Object { $c = $_.CommandLine; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; 'pid {0}: {1}' -f $_.ProcessId, $c.Substring(0, [Math]::Min(160, $c.Length)) } } -ArgumentList $dest)
+    if ($stray.Count -and -not $failure) { $failure = "FAIL: the run left $($stray.Count) stray process(es) with windows on $Target (ended): " + ($stray -join ' ; ') }
     if ($failure) { $text = "$text`n$failure`nEXIT=1" }
     if ($OutFile) { $text | Set-Content -LiteralPath $OutFile -Encoding UTF8 } else { $text }
     if ($failure) { Write-Warning $failure }
 }
 finally {
     try { Invoke-Command $s { param($d, $task) Unregister-ScheduledTask $task -Confirm:$false -ErrorAction SilentlyContinue; Remove-Item $d -Recurse -Force -ErrorAction SilentlyContinue } -ArgumentList $dest, $task } catch { $null = $_ }
+    # The lock goes only when this run took it and the file still holds this run's text.
+    if ($haveLock) { try { Invoke-Command $s { param($path, $token) if ((Test-Path -LiteralPath $path) -and (([string](Get-Content -LiteralPath $path -Raw -ErrorAction SilentlyContinue)).Trim() -eq $token)) { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue } } -ArgumentList $lockPath, $lockToken } catch { Write-Warning "Releasing the lab lock failed: $($_.Exception.Message)" } }
     Remove-PSSession $s
 }
