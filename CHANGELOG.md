@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [2026.11.15.0088] - 2026-11-15
+
+## 11 components refreshed so disabled controls look dimmed
+
+### Installer
+
+- Carry Collection and Compliance Manager 2026.11.15.0027, Collection Manager 2026.11.15.0030 and Deployment Helper 2026.11.15.0027.
+- Carry Detection Method Tester 2026.11.15.0024, Device Inspector 2026.11.15.0017 and DP Content Manager 2026.11.15.0023.
+- Carry Installer Analysis 2026.11.15.0029, Maintenance Window Manager 2026.11.15.0024 and Pivots and Scripts 2026.11.15.0016.
+- Carry Site Hygiene 2026.11.15.0039 and Update Planner 2026.11.15.0013; App Packager 2026.11.14.0141 is unchanged.
+- Dim disabled text boxes, combo boxes and sidebar buttons in every app, so they look disabled.
+- Capture all 38 guide images of Detection Method Tester and retake the images of Device Inspector and Installer Analysis.
+
 ## [2026.11.15.0087] - 2026-11-15
 
 ## 11 components refreshed with blue pressed buttons and a light blue inactive title bar
