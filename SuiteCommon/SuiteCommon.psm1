@@ -2389,6 +2389,27 @@ function Get-SuiteWindowBody {
         Inputs        = $rows.ToArray()
     }
 }
+function Close-SuiteOpenWindow {
+    <#
+    .SYNOPSIS
+        Closes every WPF window that is still open in this runspace; returns the titles of the windows it closed.
+    .DESCRIPTION
+        For window tests: call it in a finally block of the test (or after each STA call), so that no window stays on the
+        desktop of the lab computer. It finds the windows through the presentation sources, so it needs no Application object.
+        Run it on the thread that owns the windows (the STA thread).
+    #>
+    [CmdletBinding()]
+    param()
+    $closed = New-Object System.Collections.Generic.List[string]
+    foreach ($source in @([System.Windows.PresentationSource]::CurrentSources)) {
+        $w = $source.RootVisual
+        if ($w -is [System.Windows.Window]) {
+            $closed.Add([string]$w.Title)
+            try { $w.Close() } catch { $null = $_ }
+        }
+    }
+    return $closed.ToArray()
+}
 function Get-SuiteButtonStateReport {
     <#
     .SYNOPSIS
