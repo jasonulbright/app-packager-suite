@@ -30,8 +30,8 @@ Describe 'Run-VisibleProbe lab lock' {
         $copy | Should -BeGreaterThan $lock
     }
 
-    It 'treats a lock older than 30 minutes as stale and refreshes the lock while the run goes' {
-        $script:Text | Should -Match 'TotalMinutes -gt 30'
+    It 'treats a lock older than 10 minutes as stale and refreshes the lock while the run goes' {
+        $script:Text | Should -Match 'TotalMinutes -gt 10'
         $script:Text | Should -Match 'LastWriteTime = Get-Date'
     }
 
@@ -47,5 +47,27 @@ Describe 'Run-VisibleProbe lab lock' {
 
     It 'never signs out, locks, disconnects or restarts the lab session' {
         $script:Text | Should -Not -Match '(?i)logoff|shutdown|Restart-Computer|tsdiscon|LockWorkStation'
+    }
+}
+
+Describe 'Run-VisibleProbe remote watchdog' {
+    It 'starts a watchdog on the lab computer before the command runs, so a dead runner cannot leave a run unwatched' {
+        $watch = $script:Text.IndexOf('.watch.ps1')
+        $cmd = $script:Text.IndexOf('SUITE_ALLOW_WINDOW_TESTS')
+        $watch | Should -BeGreaterThan 0
+        $script:Text.Contains('-WrapPid') | Should -BeTrue
+        $script:Text.Contains('remote watchdog') | Should -BeTrue
+    }
+
+    It 'ends a run after the total time or after the quiet time, and writes the done flag' {
+        $script:Text.Contains('the run did not finish in $Minutes minutes') | Should -BeTrue
+        $script:Text.Contains('no output for $Quiet minutes') | Should -BeTrue
+        $script:Text.Contains("Set-Content -LiteralPath `"`$Dir\.done`"") | Should -BeTrue
+    }
+}
+
+Describe 'Run-VisibleProbe stray check and the watchdog' {
+    It 'does not count its own watchdog process as a stray process' {
+        $script:Text.Contains("-notlike '*.watch.ps1*'") | Should -BeTrue
     }
 }

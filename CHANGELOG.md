@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- End a hung or silent lab window run from a watchdog on the lab computer, also when the runner on the dev PC is gone.
+
+### Fixed
+
 - Give the message box and confirm dialog the inactive caption text and the button templates, so the inactive title text passes 4.5:1.
 
 ### SuiteCommon
