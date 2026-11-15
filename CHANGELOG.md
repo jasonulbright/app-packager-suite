@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### SuiteCommon
+
+- Add Close-SuiteOpenWindow, which closes every WPF window left open in a runspace, so a window test never leaves a window on the lab desktop.
+
 ### Fixed
 
 - Draw the buttons of the themed confirm dialog (Show-ConfirmDialog) with a 1 px border (gray, accent for the primary button) instead of a 2 px border in the text color.

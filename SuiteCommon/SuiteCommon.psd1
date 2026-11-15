@@ -67,6 +67,7 @@
         'Get-SuiteButtonRow'
         'Get-SuiteWindowChrome'
         'Get-SuiteWindowBody'
+        'Close-SuiteOpenWindow'
         'Get-SuiteRelativeLuminance'
         'Get-SuiteButtonStateReport'
 

@@ -13,7 +13,7 @@ BeforeAll {
 
 Describe 'Window test helpers' {
     It 'exports every helper' {
-        foreach ($n in 'Get-SuiteContrastRatio', 'Get-SuiteVisualDescendant', 'Test-SuiteVisibleInTree', 'Get-SuiteButtonRow', 'Get-SuiteWindowChrome', 'Get-SuiteButtonStateReport') {
+        foreach ($n in 'Get-SuiteContrastRatio', 'Get-SuiteVisualDescendant', 'Test-SuiteVisibleInTree', 'Get-SuiteButtonRow', 'Get-SuiteWindowChrome', 'Get-SuiteButtonStateReport', 'Get-SuiteWindowBody', 'Get-SuiteRelativeLuminance', 'Close-SuiteOpenWindow') {
             Get-Command -Module SuiteCommon -Name $n -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because $n
         }
     }
