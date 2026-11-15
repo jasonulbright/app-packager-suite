@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### SuiteCommon
+
+- Add Get-SuiteTitleBarContrast, the contrast of each title bar state with its own caption text, for window contrast probes.
+
 ### Fixed
 
 - Show the inactive light title bar in light blue (#4BA3E0) with dark gray caption text at 4.6:1, not grey.

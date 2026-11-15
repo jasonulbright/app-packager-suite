@@ -2523,6 +2523,30 @@ function Close-SuiteOpenWindow {
     }
     return $closed.ToArray()
 }
+function Get-SuiteTitleBarContrast {
+    <#
+    .SYNOPSIS
+        Contrast of the caption text on the active and on the inactive title bar, each with the text of its own state.
+    .DESCRIPTION
+        Active: white (library text) on the active bar. Inactive: in the light theme the dark caption text
+        (TitleBarInactiveText) on the light blue bar, in the dark theme white on the gray bar. A window that is
+        active or inactive at the time of the call gives the same answer, because the text of each state is taken
+        from the palette, not from the window.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Window, [Nullable[bool]]$IsDark)
+    $ctx = Get-SuiteThemeContext
+    $dark = if ($null -ne $IsDark) { [bool]$IsDark } else { [bool](& $ctx.IsDarkGetter) }
+    $white = [System.Windows.Media.Colors]::White
+    $inactiveText = if ($dark) { $white } else { $ctx.Brushes.TitleBarInactiveText.Color }
+    $result = [ordered]@{ Active = $null; Inactive = $null }
+    $states = @(@{ Name = 'Active'; Brush = $Window.WindowTitleBrush; Text = $white }, @{ Name = 'Inactive'; Brush = $Window.NonActiveWindowTitleBrush; Text = $inactiveText })
+    foreach ($s in $states) {
+        if ($s.Brush -isnot [System.Windows.Media.SolidColorBrush]) { continue }
+        $result[$s.Name] = [math]::Round((Get-SuiteContrastRatio -Foreground $s.Text -Background $s.Brush.Color), 2)
+    }
+    return [pscustomobject]$result
+}
 function Get-SuiteButtonStateReport {
     <#
     .SYNOPSIS
