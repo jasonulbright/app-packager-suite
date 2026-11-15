@@ -51,6 +51,7 @@ $lockToken = '{0}|{1}|{2}' -f $leaf, $PID, (Get-Date -Format s)
 $haveLock = $false
 try {
     $lockWaitEnd = (Get-Date).AddMinutes(90)
+    $unknownReported = $false
     while (-not $haveLock) {
         $got = Invoke-Command $s {
             param($path, $token)
@@ -58,11 +59,20 @@ try {
             try { New-Item -ItemType File -Path $path -ErrorAction Stop | Out-Null; Set-Content -LiteralPath $path -Value $token -Encoding Ascii; 'taken' }
             catch {
                 $item = Get-Item -LiteralPath $path -ErrorAction SilentlyContinue
-                if ($item -and ((Get-Date) - $item.LastWriteTime).TotalMinutes -gt 10) { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue; 'stale' }
-                else { 'busy: ' + ((Get-Content -LiteralPath $path -ErrorAction SilentlyContinue) -join ' ') }
+                $text = ((Get-Content -LiteralPath $path -ErrorAction SilentlyContinue) -join ' ').Trim()
+                # A lock in a format this runner does not know (not owner|pid|start time) is never free and never removed here: it blocks and is reported.
+                if ($text -notmatch '^[^|\s][^|]*\|\d+\|\d{4}-\d{2}-\d{2}T') { 'unknown: ' + $text }
+                elseif ($item -and ((Get-Date) - $item.LastWriteTime).TotalMinutes -gt 10) { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue; 'stale' }
+                else { 'busy: ' + $text }
             }
         } -ArgumentList $lockPath, $lockToken
         if ($got -eq 'taken') { $haveLock = $true }
+        elseif ($got -like 'unknown:*') {
+            # Blocking, never free: report it once, keep waiting, never remove it. At the end of the wait the run fails and nothing was started.
+            if (-not $unknownReported) { Write-Warning "The lab lock $lockPath has a format this runner does not know and blocks the run ($got). Waiting; the lock is not removed. Remove it only after its owner is known to be gone."; $unknownReported = $true }
+            if ((Get-Date) -gt $lockWaitEnd) { throw "The lab lock $lockPath stayed taken in an unknown format for 90 minutes ($got). Nothing was started." }
+            Start-Sleep -Seconds 20
+        }
         elseif ((Get-Date) -gt $lockWaitEnd) { throw "The lab lock $lockPath stayed taken for 90 minutes ($got)." }
         elseif ($got -ne 'stale') { Start-Sleep -Seconds 20 }
     }

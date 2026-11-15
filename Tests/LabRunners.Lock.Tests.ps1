@@ -71,3 +71,38 @@ Describe 'Run-VisibleProbe stray check and the watchdog' {
         $script:Text.Contains("-notlike '*.watch.ps1*'") | Should -BeTrue
     }
 }
+
+Describe 'Run-VisibleProbe lock format' {
+    BeforeAll {
+        # The pattern of the runner: owner|pid|start time. Read it from the script, so a change of the format fails here.
+        $m = [regex]::Match($script:Text, "\`$text -notmatch '([^']+)'")
+        $script:Pattern = $m.Groups[1].Value
+    }
+
+    It 'knows the pattern of its own lock text' {
+        $script:Pattern | Should -Not -BeNullOrEmpty
+        'dt-f|22440|2026-11-15T01:27:34' | Should -Match $script:Pattern
+        'pester|1|2026-11-15T01:27:34' | Should -Match $script:Pattern
+    }
+
+    It 'treats every other lock text as unknown, never as free' -ForEach @(
+        @{ Text = '' }
+        @{ Text = 'claude-apd-labcheck' }
+        @{ Text = '{"owner":"claude-apd-labcheck","pid":4120}' }
+        @{ Text = 'owner=claude-apd-labcheck pid=4120 start=2026-11-15T01:27:34' }
+        @{ Text = 'dt-f|abc|2026-11-15T01:27:34' }
+        @{ Text = '|22440|2026-11-15T01:27:34' }
+    ) {
+        $Text | Should -Not -Match $script:Pattern
+    }
+
+    It 'blocks on an unknown lock: it reports it, waits, fails with nothing started at the end of the wait and does not remove the lock' {
+        $script:Text.Contains("'unknown: ' + `$text") | Should -BeTrue
+        $script:Text.Contains("`$got -like 'unknown:*'") | Should -BeTrue
+        $script:Text.Contains('Nothing was started') | Should -BeTrue
+        $script:Text.Contains('Waiting; the lock is not removed') | Should -BeTrue
+        $unknown = $script:Text.IndexOf("'unknown: ' + `$text")
+        $remove = $script:Text.IndexOf("Remove-Item -LiteralPath `$path -Force -ErrorAction SilentlyContinue; 'stale'")
+        $unknown | Should -BeLessThan $remove -Because 'the format check comes before the stale check'
+    }
+}
