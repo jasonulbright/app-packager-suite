@@ -30,8 +30,12 @@ Describe 'Run-VisibleProbe lab lock' {
         $copy | Should -BeGreaterThan $lock
     }
 
-    It 'treats a lock older than 10 minutes as stale and refreshes the lock while the run goes' {
-        $script:Text | Should -Match 'TotalMinutes -gt 10'
+    It 'treats a lock as stale only after 30 minutes with no running owner, reports a removal and refreshes the lock while the run goes' {
+        $script:Text | Should -Match '-gt 30 -and'
+        $script:Text | Should -Not -Match 'TotalMinutes -gt 10'
+        $script:Text | Should -Match 'Get-Process -Id'
+        $script:Text | Should -Match 'the stale lab lock'
+        $script:Text | Should -Match '\$lockNotes'
         $script:Text | Should -Match 'LastWriteTime = Get-Date'
     }
 
@@ -102,7 +106,7 @@ Describe 'Run-VisibleProbe lock format' {
         $script:Text.Contains('Nothing was started') | Should -BeTrue
         $script:Text.Contains('Waiting; the lock is not removed') | Should -BeTrue
         $unknown = $script:Text.IndexOf("'unknown: ' + `$text")
-        $remove = $script:Text.IndexOf("Remove-Item -LiteralPath `$path -Force -ErrorAction SilentlyContinue; 'stale'")
-        $unknown | Should -BeLessThan $remove -Because 'the format check comes before the stale check'
+        $held = $script:Text.IndexOf("'held: ' + ")
+        $unknown | Should -BeLessThan $held -Because 'the format check comes before the stale check'
     }
 }
