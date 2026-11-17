@@ -250,6 +250,47 @@ Describe 'Save-SuiteSettings' {
         $ok = Save-SuiteSettings -Path (Join-Path $blocker 'x.json') -Settings @{ A = 1 }
         $ok | Should -BeFalse
     }
+
+    # The save is atomic: the new text goes to a temp file in the same folder and replaces the old file in one step.
+    It 'writes a temp file and leaves the old file whole until the swap' {
+        $p = Join-Path $TestDrive 'atomic.json'
+        Save-SuiteSettings -Path $p -Settings @{ Old = 'yes' } | Should -BeTrue
+        $seen = InModuleScope SuiteCommon -Parameters @{ Target = $p } {
+            $script:AtomicTarget = $Target
+            Mock Set-Content {
+                $script:SeenPath = $LiteralPath
+                $script:TargetDuring = [System.IO.File]::ReadAllText($script:AtomicTarget)
+                [System.IO.File]::WriteAllText($LiteralPath, [string]$Value)
+            }
+            $ok = Save-SuiteSettings -Path $Target -Settings @{ New = 'yes' }
+            [pscustomobject]@{ Ok = $ok; Path = $script:SeenPath; During = $script:TargetDuring }
+        }
+        $seen.Ok | Should -BeTrue
+        $seen.Path | Should -Not -Be $p
+        $seen.During | Should -Match '"Old"'
+        $seen.During | Should -Not -Match '"New"'
+        (Get-Content -LiteralPath $p -Raw) | Should -Match '"New"'
+        @(Get-ChildItem -LiteralPath $TestDrive -Filter 'atomic.json*').Count | Should -Be 1
+    }
+
+    It 'keeps the old file and leaves no temp file when the swap fails' {
+        $p = Join-Path $TestDrive 'locked.json'
+        Save-SuiteSettings -Path $p -Settings @{ Old = 'yes' } | Should -BeTrue
+        $stream = [System.IO.File]::Open($p, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::None)
+        try { $ok = Save-SuiteSettings -Path $p -Settings @{ New = 'yes' } }
+        finally { $stream.Dispose() }
+        $ok | Should -BeFalse
+        (Get-Content -LiteralPath $p -Raw) | Should -Match '"Old"'
+        @(Get-ChildItem -LiteralPath $TestDrive -Filter 'locked.json*').Count | Should -Be 1
+    }
+
+    It 'resolves a relative path against the PowerShell location' {
+        Push-Location -LiteralPath $TestDrive
+        try { $ok = Save-SuiteSettings -Path 'relative.json' -Settings @{ A = 1 } }
+        finally { Pop-Location }
+        $ok | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $TestDrive 'relative.json') | Should -BeTrue
+    }
 }
 
 # ============================================================================

@@ -596,19 +596,38 @@ function Save-SuiteSettings {
         [int]$Depth = 5
     )
 
+    $tempPath = $null
     try {
         $parentDir = Split-Path -Path $Path -Parent
         if ($parentDir -and -not (Test-Path -LiteralPath $parentDir)) {
             New-Item -ItemType Directory -Path $parentDir -Force -ErrorAction Stop | Out-Null
         }
+        # Write the new text to a temp file in the same folder, then swap it in.
+        # A crash or a full disk during the write leaves the old file whole,
+        # where a direct Set-Content onto the target leaves a truncated one.
+        # The temp file shares the volume, so the swap is one file system call.
+        $fullPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
+        $json = $Settings | ConvertTo-Json -Depth $Depth
+        $tempPath = '{0}.{1}.tmp' -f $fullPath, [guid]::NewGuid().ToString('N')
         # -ErrorAction Stop: Set-Content fails non-terminating by default,
         # which would skip the catch and report success on a failed write.
-        $Settings | ConvertTo-Json -Depth $Depth | Set-Content -LiteralPath $Path -Encoding UTF8 -ErrorAction Stop
+        Set-Content -LiteralPath $tempPath -Value $json -Encoding UTF8 -ErrorAction Stop
+        if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+            # [NullString]::Value: a PowerShell $null becomes an empty string here, and File.Replace rejects it as a path.
+            [System.IO.File]::Replace($tempPath, $fullPath, [NullString]::Value)
+        }
+        else {
+            [System.IO.File]::Move($tempPath, $fullPath)
+        }
+        $tempPath = $null
         return $true
     }
     catch {
         Write-Log ("Failed to save settings to {0}: {1}" -f $Path, $_.Exception.Message) -Level WARN -Quiet
         return $false
+    }
+    finally {
+        if ($tempPath -and (Test-Path -LiteralPath $tempPath)) { Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue }
     }
 }
 
