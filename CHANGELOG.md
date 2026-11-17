@@ -12,6 +12,7 @@
 ### Added
 
 - Run the Pester tests on every pull request and every push to main, on Windows PowerShell 5.1 and PowerShell 7; a change that only touches documents or images does not start it.
+- Add a test of the repository x guard matrix: every ConfigMgr tool repository must keep its theme, button, chrome, density, font weight, footer, encoding, guide image, README image and window guard tests; the pull request workflow clones the repositories for it.
 
 ## [2026.11.15.0088] - 2026-11-15
 
