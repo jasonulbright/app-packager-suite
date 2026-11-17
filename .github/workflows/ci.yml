@@ -1,0 +1,114 @@
+name: CI
+
+# Runs the 10 Pester test files of the suite repository on every pull request and
+# every push to main. The tests need no lab and no Configuration Manager. A change
+# that only touches documents or images does not start this workflow.
+on:
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'assets/**'
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'assets/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-powershell:
+    name: Pester (Windows PowerShell 5.1)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          $makensis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          if (-not (Test-Path -LiteralPath $makensis)) {
+            choco install nsis --no-progress -y
+            if ($LASTEXITCODE -ne 0) { throw "choco install nsis failed with exit code $LASTEXITCODE" }
+          }
+          if (-not (Test-Path -LiteralPath $makensis)) { throw 'makensis.exe is missing after the install' }
+
+      - name: Install Pester 5.7.1
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+          Import-Module Pester -RequiredVersion 5.7.1 -ErrorAction Stop
+          Get-Module Pester | Format-Table Name, Version
+
+      - name: Run the tests
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Import-Module Pester -RequiredVersion 5.7.1 -ErrorAction Stop
+          $config = New-PesterConfiguration
+          $config.Run.Path = 'Tests'
+          $config.Run.PassThru = $true
+          $config.Output.Verbosity = 'Normal'
+          $result = Invoke-Pester -Configuration $config
+          Write-Host ("host {0}: total {1}, passed {2}, failed {3}, skipped {4}" -f $PSVersionTable.PSVersion, $result.TotalCount, $result.PassedCount, $result.FailedCount, $result.SkippedCount)
+          if ($result.TotalCount -eq 0) { throw 'Pester found no tests' }
+          if ($result.Result -ne 'Passed' -or $result.FailedCount -gt 0 -or $result.FailedBlocksCount -gt 0 -or $result.FailedContainersCount -gt 0) {
+            throw 'Pester reported failures'
+          }
+
+  test-pwsh:
+    name: Pester (PowerShell 7)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          $makensis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          if (-not (Test-Path -LiteralPath $makensis)) {
+            choco install nsis --no-progress -y
+            if ($LASTEXITCODE -ne 0) { throw "choco install nsis failed with exit code $LASTEXITCODE" }
+          }
+          if (-not (Test-Path -LiteralPath $makensis)) { throw 'makensis.exe is missing after the install' }
+
+      - name: Install Pester 5.7.1
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+          Import-Module Pester -RequiredVersion 5.7.1 -ErrorAction Stop
+          Get-Module Pester | Format-Table Name, Version
+
+      - name: Run the tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Import-Module Pester -RequiredVersion 5.7.1 -ErrorAction Stop
+          $config = New-PesterConfiguration
+          $config.Run.Path = 'Tests'
+          $config.Run.PassThru = $true
+          $config.Output.Verbosity = 'Normal'
+          $result = Invoke-Pester -Configuration $config
+          Write-Host ("host {0}: total {1}, passed {2}, failed {3}, skipped {4}" -f $PSVersionTable.PSVersion, $result.TotalCount, $result.PassedCount, $result.FailedCount, $result.SkippedCount)
+          if ($result.TotalCount -eq 0) { throw 'Pester found no tests' }
+          if ($result.Result -ne 'Passed' -or $result.FailedCount -gt 0 -or $result.FailedBlocksCount -gt 0 -or $result.FailedContainersCount -gt 0) {
+            throw 'Pester reported failures'
+          }
