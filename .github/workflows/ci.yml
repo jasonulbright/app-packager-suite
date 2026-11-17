@@ -33,6 +33,17 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Clone the component repositories
+        shell: pwsh
+        run: |
+          # The repository x guard matrix test (RepoGuardMatrix.Tests.ps1) reads the Tests folder of each component next to this one.
+          $repos = 'collection-and-compliance-manager', 'collection-manager', 'deployment-helper', 'detection-tester', 'device-inspector', 'dp-content-manager', 'installer-analysis', 'maintenance-window-manager', 'pivots-and-scripts', 'site-hygiene', 'update-planner'
+          $parent = Split-Path -Parent $env:GITHUB_WORKSPACE
+          foreach ($repo in $repos) {
+            git clone --quiet --depth 1 "https://github.com/jasonulbright/$repo.git" (Join-Path $parent $repo)
+            if ($LASTEXITCODE -ne 0) { throw "clone failed for $repo" }
+          }
+          "SUITE_REQUIRE_REPOS=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
       - name: Install NSIS
         shell: pwsh
         run: |
@@ -78,6 +89,17 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Clone the component repositories
+        shell: pwsh
+        run: |
+          # The repository x guard matrix test (RepoGuardMatrix.Tests.ps1) reads the Tests folder of each component next to this one.
+          $repos = 'collection-and-compliance-manager', 'collection-manager', 'deployment-helper', 'detection-tester', 'device-inspector', 'dp-content-manager', 'installer-analysis', 'maintenance-window-manager', 'pivots-and-scripts', 'site-hygiene', 'update-planner'
+          $parent = Split-Path -Parent $env:GITHUB_WORKSPACE
+          foreach ($repo in $repos) {
+            git clone --quiet --depth 1 "https://github.com/jasonulbright/$repo.git" (Join-Path $parent $repo)
+            if ($LASTEXITCODE -ne 0) { throw "clone failed for $repo" }
+          }
+          "SUITE_REQUIRE_REPOS=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
       - name: Install NSIS
         shell: pwsh
         run: |
