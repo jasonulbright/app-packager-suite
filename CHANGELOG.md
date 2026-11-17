@@ -7,6 +7,10 @@
 - Treat a lab lock as stale only after 30 minutes and only when its owner process is not running; report a removed lock in the output.
 - Treat a lab lock in an unknown format as blocking: report it, wait, never remove it.
 
+### Added
+
+- Run the Pester tests on every pull request and every push to main, on Windows PowerShell 5.1 and PowerShell 7; a change that only touches documents or images does not start it.
+
 ## [2026.11.15.0088] - 2026-11-15
 
 ## 11 components refreshed so disabled controls look dimmed
