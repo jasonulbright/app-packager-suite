@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- The three SuiteCommon dialogs (message, yes or no, collection picker) take one ThemedButtonStyle, as the apps do, so the repositories can guard every vendored button.
 - Treat a lab lock as stale only after 30 minutes and only when its owner process is not running; report a removed lock in the output.
 - Treat a lab lock in an unknown format as blocking: report it, wait, never remove it.
 

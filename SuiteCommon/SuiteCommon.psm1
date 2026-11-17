@@ -1462,6 +1462,29 @@ function Show-ThemedMessage {
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Fonts.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Themes/Dark.Steel.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <!-- The one button style of the dialog, the same as ThemedButtonStyle of the apps: the neutral template, the theme
+                 text color, no color literal. Every dialog button takes it or a style that is based on it. -->
+            <Style x:Key="ThemedButtonStyle" TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button.Square}">
+                <Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.Gray2}"/>
+                <Setter Property="Template" Value="{DynamicResource SuiteNeutralButtonTemplate}"/>
+                <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.ThemeForeground}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="Controls:ControlsHelper.ContentCharacterCasing" Value="Normal"/>
+            </Style>
+            <Style x:Key="DialogButton" TargetType="Button" BasedOn="{StaticResource ThemedButtonStyle}">
+                <Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+            </Style>
+            <Style x:Key="DialogAccentButton" TargetType="Button" BasedOn="{StaticResource ThemedButtonStyle}">
+                <Setter Property="Template" Value="{DynamicResource SuiteAccentButtonTemplate}"/>
+                <Setter Property="Background" Value="{DynamicResource MahApps.Brushes.AccentBase}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.AccentBase}"/>
+                <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.IdealForeground}"/>
+                <Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
     <Grid Margin="20,18,20,14">
@@ -1476,12 +1499,8 @@ function Show-ThemedMessage {
         <TextBlock x:Name="txtIcon" Grid.Row="0" Grid.Column="0" FontSize="20" VerticalAlignment="Top" Margin="0,0,14,0"/>
         <TextBlock x:Name="txtMsg"  Grid.Row="0" Grid.Column="1" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"/>
         <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
-            <Button x:Name="btnPrimary"   BorderThickness="1" BorderBrush="{DynamicResource MahApps.Brushes.AccentBase}" MinWidth="90" Height="32" Margin="0,0,8,0" IsDefault="True"
-                    Style="{DynamicResource MahApps.Styles.Button.Square.Accent}" Template="{DynamicResource SuiteAccentButtonTemplate}"
-                    Controls:ControlsHelper.ContentCharacterCasing="Normal"/>
-            <Button x:Name="btnSecondary" BorderThickness="1" BorderBrush="{DynamicResource MahApps.Brushes.Gray2}" MinWidth="90" Height="32" IsCancel="True" Visibility="Collapsed"
-                    Style="{DynamicResource MahApps.Styles.Button.Square}" Template="{DynamicResource SuiteNeutralButtonTemplate}"
-                    Controls:ControlsHelper.ContentCharacterCasing="Normal"/>
+            <Button x:Name="btnPrimary"   IsDefault="True" Style="{StaticResource DialogAccentButton}"/>
+            <Button x:Name="btnSecondary" IsCancel="True" Visibility="Collapsed" Margin="0" Style="{StaticResource DialogButton}"/>
         </StackPanel>
     </Grid>
 </Controls:MetroWindow>
@@ -1595,17 +1614,28 @@ function Show-ConfirmDialog {
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Fonts.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Themes/Dark.Steel.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <Style x:Key="DialogButton" TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button.Square}">
+            <!-- The one button style of the dialog, the same as ThemedButtonStyle of the apps: the neutral template, the theme
+                 text color, no color literal. Every dialog button takes it or a style that is based on it. -->
+            <Style x:Key="ThemedButtonStyle" TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button.Square}">
+                <Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.Gray2}"/>
                 <Setter Property="Template" Value="{DynamicResource SuiteNeutralButtonTemplate}"/>
-                <Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.Gray2}"/><Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
-                <Setter Property="Margin" Value="0,0,8,0"/>
+                <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.ThemeForeground}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
                 <Setter Property="Controls:ControlsHelper.ContentCharacterCasing" Value="Normal"/>
             </Style>
-            <Style x:Key="DialogAccentButton" TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button.Square.Accent}">
-                <Setter Property="Template" Value="{DynamicResource SuiteAccentButtonTemplate}"/>
-                <Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.AccentBase}"/><Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
+            <Style x:Key="DialogButton" TargetType="Button" BasedOn="{StaticResource ThemedButtonStyle}">
+                <Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
                 <Setter Property="Margin" Value="0,0,8,0"/>
-                <Setter Property="Controls:ControlsHelper.ContentCharacterCasing" Value="Normal"/>
+            </Style>
+            <Style x:Key="DialogAccentButton" TargetType="Button" BasedOn="{StaticResource ThemedButtonStyle}">
+                <Setter Property="Template" Value="{DynamicResource SuiteAccentButtonTemplate}"/>
+                <Setter Property="Background" Value="{DynamicResource MahApps.Brushes.AccentBase}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.AccentBase}"/>
+                <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.IdealForeground}"/>
+                <Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
             </Style>
         </ResourceDictionary>
     </Window.Resources>
@@ -1864,17 +1894,28 @@ function Show-CollectionPickerDialog {
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Fonts.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Themes/Dark.Steel.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <Style x:Key="DialogButton" TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button.Square}">
+            <!-- The one button style of the dialog, the same as ThemedButtonStyle of the apps: the neutral template, the theme
+                 text color, no color literal. Every dialog button takes it or a style that is based on it. -->
+            <Style x:Key="ThemedButtonStyle" TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button.Square}">
+                <Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.Gray2}"/>
                 <Setter Property="Template" Value="{DynamicResource SuiteNeutralButtonTemplate}"/>
-                <Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.Gray2}"/><Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
-                <Setter Property="Margin" Value="0,0,8,0"/>
+                <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.ThemeForeground}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
                 <Setter Property="Controls:ControlsHelper.ContentCharacterCasing" Value="Normal"/>
             </Style>
-            <Style x:Key="DialogAccentButton" TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button.Square.Accent}">
-                <Setter Property="Template" Value="{DynamicResource SuiteAccentButtonTemplate}"/>
-                <Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.AccentBase}"/><Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
+            <Style x:Key="DialogButton" TargetType="Button" BasedOn="{StaticResource ThemedButtonStyle}">
+                <Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
                 <Setter Property="Margin" Value="0,0,8,0"/>
-                <Setter Property="Controls:ControlsHelper.ContentCharacterCasing" Value="Normal"/>
+            </Style>
+            <Style x:Key="DialogAccentButton" TargetType="Button" BasedOn="{StaticResource ThemedButtonStyle}">
+                <Setter Property="Template" Value="{DynamicResource SuiteAccentButtonTemplate}"/>
+                <Setter Property="Background" Value="{DynamicResource MahApps.Brushes.AccentBase}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.AccentBase}"/>
+                <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.IdealForeground}"/>
+                <Setter Property="MinWidth" Value="90"/><Setter Property="Height" Value="32"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
             </Style>
         </ResourceDictionary>
     </Window.Resources>
