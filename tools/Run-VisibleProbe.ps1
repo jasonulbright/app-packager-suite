@@ -43,6 +43,36 @@ $ErrorActionPreference = 'Stop'
 $leaf = Split-Path $Worktree -Leaf
 $dest = "C:\guide\visible-$leaf"
 $task = "VisibleProbe-$leaf"
+# Stops the processes of a run on the lab computer by the ledger of that run and by process id (vault: testing-policy, 'Process rules on a lab VM').
+# No process is stopped by a command-line pattern: another session may own a process that matches.
+$stopTree = @'
+param([string]$Dest, [string]$Mode)
+# Mode Stray: stop the descendants of the run that are not in the ledger. Mode All: stop the whole run (descendants, then the run itself).
+# The ledger $Dest\.pids holds one line per process of the run: process id|start ticks. The first line is the process that started the run.
+# A process is found only through the ledger and through ParentProcessId. Nothing is selected by a command line.
+$ledger = Join-Path $Dest '.pids'
+if (-not (Test-Path -LiteralPath $ledger)) { return }
+$entries = @(Get-Content -LiteralPath $ledger | ForEach-Object { $a = $_ -split '\|'; [pscustomobject]@{ Id = [int]$a[0]; Ticks = [long]$a[1] } })
+# A live process with this id but another start time is a different process (the id was reused): stop nothing.
+$live = Get-Process -Id $entries[0].Id -ErrorAction SilentlyContinue
+if ($live -and $live.StartTime.Ticks -ne $entries[0].Ticks) { return }
+function Stop-Below([int]$Id, [datetime]$Since, [int[]]$Skip) {
+    foreach ($c in @(Get-CimInstance Win32_Process -Filter ('ParentProcessId=' + $Id))) {
+        if ($c.CreationDate -lt $Since.AddSeconds(-2) -or $Skip -contains [int]$c.ProcessId) { continue }
+        Stop-Below ([int]$c.ProcessId) $c.CreationDate $Skip
+        Stop-Process -Id $c.ProcessId -Force -ErrorAction SilentlyContinue
+        'pid {0}: {1}' -f $c.ProcessId, $c.Name
+    }
+}
+$skip = if ($Mode -eq 'Stray') { @($entries | Select-Object -Skip 1 | ForEach-Object { $_.Id }) } else { @() }
+Stop-Below $entries[0].Id (New-Object DateTime $entries[0].Ticks) $skip
+if ($Mode -eq 'All') {
+    foreach ($e in $entries) {
+        $p = Get-Process -Id $e.Id -ErrorAction SilentlyContinue
+        if ($p -and $p.Id -ne $PID -and $p.StartTime.Ticks -eq $e.Ticks) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
+    }
+}
+'@
 $s = New-PSSession -ComputerName $Target -Credential $LabCredential
 # One window run at a time on the lab computer: the exclusive lock file C:\guide\capture.lock (the file the guide captures use).
 # Its text is owner|pid|start time. A lock is stale only when its last write is older than 30 minutes AND its pid is not running (on the lab computer and on this computer);
@@ -98,15 +128,14 @@ try {
         elseif ((Get-Date) -gt $lockWaitEnd) { throw "The lab lock $lockPath stayed taken for 90 minutes ($got)." }
         else { Start-Sleep -Seconds 20 }
     }
-    # Under the lock no other run is active: end the left-over PowerShell processes of earlier runs and captures (their windows go with them).
-    Invoke-Command $s { Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like '*C:\guide\*' -and $_.ProcessId -ne $PID } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } }
-    Invoke-Command $s { param($d) Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like "*$d\*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }; Start-Sleep 1; if (Test-Path $d) { Remove-Item $d -Recurse -Force }; New-Item -ItemType Directory $d -Force | Out-Null } -ArgumentList $dest
+    # Under the lock no other run is active. End only the left-over processes that an earlier run of this copy recorded in its ledger.
+    Invoke-Command $s { param($d) $null = & ([scriptblock]::Create($using:stopTree)) $d 'All'; Start-Sleep 1; if (Test-Path $d) { Remove-Item $d -Recurse -Force }; New-Item -ItemType Directory $d -Force | Out-Null } -ArgumentList $dest
     foreach ($i in Get-ChildItem -LiteralPath $Worktree -Force | Where-Object { $_.Name -ne '.git' }) { Copy-Item -LiteralPath $i.FullName -Destination "$dest\$($i.Name)" -ToSession $s -Recurse -Force }
     Invoke-Command $s {
         param($d, $a, $user, $task, $minutes, $quiet, $watchText)
         # The remote watchdog (a hidden PowerShell process on the lab computer) ends a run that hangs or goes quiet, also when the runner on the dev PC is gone.
         Set-Content -LiteralPath "$d\.watch.ps1" -Value $watchText -Encoding Ascii
-        $wrap = "`$null = Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File','$d\.watch.ps1','-WrapPid',`$PID,'-Dir','$d','-Minutes','$minutes','-Quiet','$quiet'; Set-Location `"$d`"; `$env:SUITE_ALLOW_WINDOW_TESTS = '1'; `$env:SUITE_VISIBLE_WINDOWS = '1'; New-Item -ItemType File -Force `"$d\.out.txt`" | Out-Null; try { & { $a } *>&1 | ForEach-Object { (`$_ | Out-String -Width 220).TrimEnd() | Add-Content -LiteralPath `"$d\.out.txt`" -Encoding Ascii }; `"EXIT=`$LASTEXITCODE`" | Add-Content `"$d\.out.txt`" } catch { `$_ | Out-String | Add-Content `"$d\.out.txt`" } finally { Set-Content `"$d\.done`" 'done' }"
+        $wrap = "Add-Content -LiteralPath '$d\.pids' ('{0}|{1}' -f `$PID, (Get-Process -Id `$PID).StartTime.Ticks); `$w = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList '-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File','$d\.watch.ps1','-WrapPid',`$PID,'-Dir','$d','-Minutes','$minutes','-Quiet','$quiet'; Add-Content -LiteralPath '$d\.pids' ('{0}|{1}' -f `$w.Id, `$w.StartTime.Ticks); Set-Location `"$d`"; `$env:SUITE_ALLOW_WINDOW_TESTS = '1'; `$env:SUITE_VISIBLE_WINDOWS = '1'; New-Item -ItemType File -Force `"$d\.out.txt`" | Out-Null; try { & { $a } *>&1 | ForEach-Object { (`$_ | Out-String -Width 220).TrimEnd() | Add-Content -LiteralPath `"$d\.out.txt`" -Encoding Ascii }; `"EXIT=`$LASTEXITCODE`" | Add-Content `"$d\.out.txt`" } catch { `$_ | Out-String | Add-Content `"$d\.out.txt`" } finally { Set-Content `"$d\.done`" 'done' }"
         # The wrapper is a PowerShell file: plain ASCII, no BOM.
         Set-Content -LiteralPath "$d\.wrap.ps1" -Value $wrap -Encoding Ascii
         $act = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -STA -File `"$d\.wrap.ps1`""
@@ -151,11 +180,11 @@ while ($true) {
     if (-not $done -and -not $failure) { $failure = "FAIL: the run did not finish in $Minutes minutes and was ended." }
     if ($failure) {
         # End only the processes of this copy. The labadmin session itself stays untouched.
-        Invoke-Command $s { param($d) Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like "*$d\*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force } } -ArgumentList $dest
+        Invoke-Command $s { param($d) $null = & ([scriptblock]::Create($using:stopTree)) $d 'All' } -ArgumentList $dest
     }
     $text = Invoke-Command $s { param($d) if (Test-Path "$d\.out.txt") { Get-Content "$d\.out.txt" -Raw } } -ArgumentList $dest
-    # A run that leaves a window or process behind fails: any PowerShell process of C:\guide that is not the check itself is stray.
-    $stray = @(Invoke-Command $s { param($d) Start-Sleep -Seconds 3; Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like '*C:\guide\*' -and $_.CommandLine -notlike '*.watch.ps1*' -and $_.ProcessId -ne $PID } | ForEach-Object { $c = $_.CommandLine; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; 'pid {0}: {1}' -f $_.ProcessId, $c.Substring(0, [Math]::Min(160, $c.Length)) } } -ArgumentList $dest)
+    # A run that leaves a window or process behind fails: any process below the run (found through the ledger) that is still alive after the check is stray.
+    $stray = @(Invoke-Command $s { param($d) Start-Sleep -Seconds 3; & ([scriptblock]::Create($using:stopTree)) $d 'Stray' } -ArgumentList $dest)
     if ($stray.Count -and -not $failure) { $failure = "FAIL: the run left $($stray.Count) stray process(es) with windows on $Target (ended): " + ($stray -join ' ; ') }
     if ($lockNotes.Count) { $text = ($lockNotes -join "`n") + "`n" + $text }
     if ($failure) { $text = "$text`n$failure`nEXIT=1" }
