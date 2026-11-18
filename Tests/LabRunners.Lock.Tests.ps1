@@ -44,8 +44,9 @@ Describe 'Run-VisibleProbe lab lock' {
         @($finals | Where-Object { $_.Finally.Extent.Text -match '\$haveLock' -and $_.Finally.Extent.Text -match 'Remove-Item -LiteralPath \$path' }).Count | Should -BeGreaterThan 0
     }
 
-    It 'ends stray processes before the run and fails a run that leaves any behind' {
-        $script:Text.Contains("CommandLine -like '*C:\guide\*'") | Should -BeTrue
+    It 'ends the left-over processes of its own ledger before the run and fails a run that leaves any behind' {
+        $script:Text | Should -Match '\.pids'
+        $script:Text | Should -Not -Match 'CommandLine'
         $script:Text | Should -Match 'left \$\(\$stray\.Count\) stray process'
     }
 
@@ -72,7 +73,9 @@ Describe 'Run-VisibleProbe remote watchdog' {
 
 Describe 'Run-VisibleProbe stray check and the watchdog' {
     It 'does not count its own watchdog process as a stray process' {
-        $script:Text.Contains("-notlike '*.watch.ps1*'") | Should -BeTrue
+        # The watchdog is recorded in the ledger of the run, and the stray check skips every process of the ledger.
+        $script:Text | Should -Match 'Select-Object -Skip 1'
+        $script:Text | Should -Match 'w\.Id, .{1,2}w\.StartTime\.Ticks'
     }
 }
 

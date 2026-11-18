@@ -12,6 +12,10 @@
 - Add the Bruno and PowerShell 7 (Devolutions) packagers to app-packager.
 - Use ConfigMgr terms in the README and in the help and log messages of the shared library.
 
+### Fixed
+
+- The lab probe scripts stop only the processes that a run started, found through the ledger of that run and by process id. They no longer stop PowerShell processes by command-line pattern, which could end the window of another session. A new guard test fails when a script in the tools folder stops a process by a pattern, and the repository guard matrix now requires the same guard in every tool repository.
+
 ## [2026.11.18.0090] - 2026-11-18
 
 ## 1 component refreshed with supersedence
