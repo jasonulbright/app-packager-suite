@@ -2,18 +2,17 @@
 
 ## [Unreleased]
 
-### Fixed
+## [2026.11.18.0089] - 2026-11-18
 
-- The three SuiteCommon dialogs (message, yes or no, collection picker) take one ThemedButtonStyle, as the apps do, so the repositories can guard every vendored button.
-- Treat a lab lock as stale only after 30 minutes and only when its owner process is not running; report a removed lock in the output.
-- Treat a lab lock in an unknown format as blocking: report it, wait, never remove it.
-- Save the shared settings file through a temp file and replace the old file in one step, so a failed write cannot leave a truncated settings file.
+## 12 components refreshed for large sites
 
-### Added
+### Installer
 
-- Run the Pester tests on every pull request and every push to main, on Windows PowerShell 5.1 and PowerShell 7; a change that only touches documents or images does not start it.
-- Add a test of the repository x guard matrix: every ConfigMgr tool repository must keep its theme, button, chrome, density, font weight, footer, encoding, guide image, README image and window guard tests; the pull request workflow clones the repositories for it.
-- Add the loading helpers to SuiteCommon: Invoke-SuiteCMRead (retry of transient faults, notes), Get-SuiteCollectionMemberChunk and Read-SuiteCollectionMember (member loads in ResourceID ranges), Start-SuiteBgWork and Stop-SuiteBgWork -Discard (background work with cancel).
+- Carry app-packager 2026.11.18.0142 and the eleven tool repositories at 2026.11.18 builds.
+- Add the loading helpers to SuiteCommon: retry of transient faults, member loads in ranges, background work with cancel.
+- Give the SuiteCommon dialogs one themed button style, and save settings through a temp file.
+- Run the Pester tests on every pull request on both PowerShell hosts.
+- Treat a lab lock as stale only after 30 minutes and only when its owner is not running.
 
 ## [2026.11.15.0088] - 2026-11-15
 
