@@ -49,15 +49,14 @@ jobs:
         run: |
           $makensis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
           if (-not (Test-Path -LiteralPath $makensis)) {
-            # The Chocolatey feed answers 504 now and then; retry with a growing pause.
-            $installed = $false
-            foreach ($attempt in 1..5) {
-              choco install nsis --no-progress -y
-              if ($LASTEXITCODE -eq 0) { $installed = $true; break }
-              Write-Host "choco install nsis failed with exit code $LASTEXITCODE (attempt $attempt of 5)"
-              if ($attempt -lt 5) { Start-Sleep -Seconds (30 * $attempt) }
-            }
-            if (-not $installed) { throw 'choco install nsis failed after 5 attempts' }
+            $zip = Join-Path $env:RUNNER_TEMP 'nsis-3.11.zip'
+            $url = 'https://downloads.sourceforge.net/project/nsis/NSIS%203/3.11/nsis-3.11.zip'
+            curl.exe --fail --silent --show-error --location --retry 5 --retry-delay 15 --retry-all-errors --output $zip $url
+            if ($LASTEXITCODE -ne 0) { throw "NSIS download failed with exit code $LASTEXITCODE" }
+            $actual = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
+            if ($actual -ne 'C7D27F780DDB6CFFB4730138CD1591E841F4B7EDB155856901CDF5F214394FA1') { throw "NSIS 3.11 archive hash mismatch: $actual" }
+            Expand-Archive -LiteralPath $zip -DestinationPath $env:RUNNER_TEMP -Force
+            Move-Item -LiteralPath (Join-Path $env:RUNNER_TEMP 'nsis-3.11') -Destination (Split-Path -Parent $makensis)
           }
           if (-not (Test-Path -LiteralPath $makensis)) { throw 'makensis.exe is missing after the install' }
 
@@ -112,15 +111,14 @@ jobs:
         run: |
           $makensis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
           if (-not (Test-Path -LiteralPath $makensis)) {
-            # The Chocolatey feed answers 504 now and then; retry with a growing pause.
-            $installed = $false
-            foreach ($attempt in 1..5) {
-              choco install nsis --no-progress -y
-              if ($LASTEXITCODE -eq 0) { $installed = $true; break }
-              Write-Host "choco install nsis failed with exit code $LASTEXITCODE (attempt $attempt of 5)"
-              if ($attempt -lt 5) { Start-Sleep -Seconds (30 * $attempt) }
-            }
-            if (-not $installed) { throw 'choco install nsis failed after 5 attempts' }
+            $zip = Join-Path $env:RUNNER_TEMP 'nsis-3.11.zip'
+            $url = 'https://downloads.sourceforge.net/project/nsis/NSIS%203/3.11/nsis-3.11.zip'
+            curl.exe --fail --silent --show-error --location --retry 5 --retry-delay 15 --retry-all-errors --output $zip $url
+            if ($LASTEXITCODE -ne 0) { throw "NSIS download failed with exit code $LASTEXITCODE" }
+            $actual = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
+            if ($actual -ne 'C7D27F780DDB6CFFB4730138CD1591E841F4B7EDB155856901CDF5F214394FA1') { throw "NSIS 3.11 archive hash mismatch: $actual" }
+            Expand-Archive -LiteralPath $zip -DestinationPath $env:RUNNER_TEMP -Force
+            Move-Item -LiteralPath (Join-Path $env:RUNNER_TEMP 'nsis-3.11') -Destination (Split-Path -Parent $makensis)
           }
           if (-not (Test-Path -LiteralPath $makensis)) { throw 'makensis.exe is missing after the install' }
 
