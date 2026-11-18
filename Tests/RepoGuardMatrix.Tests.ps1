@@ -30,6 +30,7 @@ BeforeDiscovery {
         'GuideImages'   = @('GuideImages.Guard.Tests.ps1')
         'Readme.Images' = @('Readme.Images.Guard.Tests.ps1')
         'WindowGuard'   = @('WindowGuard.Tests.ps1')
+        'Lexicon'       = @('Lexicon.Guard.Tests.ps1')
     }
     $script:MatrixCases = foreach ($repo in $repos) {
         foreach ($guard in $guards.Keys) {
