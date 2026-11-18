@@ -2,8 +2,14 @@
 
 ## [Unreleased]
 
+## [2026.11.18.0091] - 2026-11-18
+
+## 1 component refreshed with two packagers
+
 ### Installer
 
+- Carry app-packager 2026.11.18.0144.
+- Add the Bruno and PowerShell 7 (Devolutions) packagers to app-packager.
 - Use ConfigMgr terms in the README and in the help and log messages of the shared library.
 
 ## [2026.11.18.0090] - 2026-11-18
