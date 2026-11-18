@@ -425,6 +425,7 @@ function Get-BannedNameHit {
     $Root = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/')
     $entries = @($Lexicon.entries | Where-Object { $_.PSObject.Properties['scope'] -and $_.scope -eq 'tracked-files' -and $_.FlaggedRegex.Count -gt 0 })
     foreach ($rel in (Get-TrackedFileList -Root $Root)) {
+        if ($rel -match '^(lexicon|Lib/Lexicon)/' -or $rel -eq 'Tests/Lexicon.Guard.Tests.ps1') { continue }   # the lexicon data and its guard test hold the banned patterns
         if ($script:BinaryExtensions -contains [IO.Path]::GetExtension($rel).ToLowerInvariant()) { continue }
         $full = Join-Path $Root $rel
         if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue }
