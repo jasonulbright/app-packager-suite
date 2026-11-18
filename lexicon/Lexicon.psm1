@@ -369,6 +369,7 @@ function Find-LexiconHit {
     foreach ($it in $Item) {
         foreach ($e in @($Lexicon.entries)) {
             if (-not $e.FlaggedRegex -or $e.FlaggedRegex.Count -eq 0) { continue }
+            if ($e.PSObject.Properties['scope'] -and $e.scope -eq 'tracked-files') { continue }
             $allowed = $false
             foreach ($ar in $e.AllowRegex) { if ($ar.IsMatch($it.Text)) { $allowed = $true; break } }
             if ($allowed) { continue }
@@ -392,6 +393,68 @@ function Find-LexiconHit {
     }
 }
 
+
+# --- banned names in every tracked file -----------------------------------------------------------
+
+$script:BinaryExtensions = '.png', '.jpg', '.jpeg', '.gif', '.ico', '.bmp', '.dll', '.exe', '.zip', '.7z', '.gz', '.pdf', '.pfx', '.cer', '.snk', '.woff', '.woff2', '.ttf', '.otf', '.nupkg', '.msi', '.cab', '.bin', '.mp4', '.mov', '.wav', '.mp3', '.pdb', '.lib', '.obj', '.xz', '.tgz'
+
+function Get-TrackedFileList {
+    # Tracked files of a repository: git ls-files when git and a .git folder exist, else every file outside .git.
+    param([string]$Root)
+    $files = $null
+    if ((Test-Path -LiteralPath (Join-Path $Root '.git')) -and (Get-Command git -ErrorAction SilentlyContinue)) {
+        $out = & git -C $Root ls-files -z 2>$null
+        if ($LASTEXITCODE -eq 0 -and $out) { $files = @(($out -join '') -split "`0" | Where-Object { $_ }) }
+    }
+    if (-not $files) {
+        $files = @(Get-ChildItem -LiteralPath $Root -Recurse -File -Force -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName.Substring($Root.Length + 1) -notmatch '^(\.git|node_modules|bin|obj)[\/]' } |
+                ForEach-Object { $_.FullName.Substring($Root.Length + 1).Replace('\', '/') })
+    }
+    $files
+}
+
+function Get-BannedNameHit {
+    # Matches the entries with scope 'tracked-files' (banned names) against every line of every tracked text file.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)]$Lexicon,
+        $AllowList = @()
+    )
+    $Root = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/')
+    $entries = @($Lexicon.entries | Where-Object { $_.PSObject.Properties['scope'] -and $_.scope -eq 'tracked-files' -and $_.FlaggedRegex.Count -gt 0 })
+    foreach ($rel in (Get-TrackedFileList -Root $Root)) {
+        if ($script:BinaryExtensions -contains [IO.Path]::GetExtension($rel).ToLowerInvariant()) { continue }
+        $full = Join-Path $Root $rel
+        if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue }
+        if ((Get-Item -LiteralPath $full).Length -gt 4MB) { continue }
+        $bytes = [IO.File]::ReadAllBytes($full)
+        if ([Array]::IndexOf($bytes, [byte]0) -ge 0 -and $bytes.Length -gt 1 -and $bytes[1] -ne 0) { continue }   # binary (UTF-16 text has a zero in the second byte)
+        $lines = [IO.File]::ReadAllLines($full)
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            foreach ($e in $entries) {
+                $spans = New-Object System.Collections.Generic.List[int[]]
+                foreach ($rx in $e.FlaggedRegex) {
+                    foreach ($m in $rx.Matches($lines[$i])) {
+                        $overlap = $false
+                        foreach ($sp in $spans) { if ($m.Index -lt $sp[1] -and ($m.Index + $m.Length) -gt $sp[0]) { $overlap = $true; break } }
+                        if ($overlap) { continue }
+                        $spans.Add(@($m.Index, ($m.Index + $m.Length)))
+                        if (Test-AllowListed -Allow $AllowList -File $rel -RuleId $e.id -Phrase $m.Value -Line ($i + 1)) { continue }
+                        $t = $lines[$i].Trim()
+                        if ($t.Length -gt 200) { $t = $t.Substring(0, 200) }
+                        [pscustomobject]@{
+                            File = $rel; Line = $i + 1; Kind = 'tracked-file'; Phrase = $m.Value; RuleId = $e.id
+                            Severity = $e.severity; Status = $e.status; Replacement = $e.replacement; Class = $e.category; Text = $t
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 function Invoke-LexiconCheck {
     [CmdletBinding()]
     param(
@@ -408,4 +471,4 @@ function Invoke-LexiconCheck {
     Find-LexiconHit -Item $items -Lexicon $lex -AllowList $allow
 }
 
-Export-ModuleMember -Function Import-LexiconData, Import-LexiconAllowList, Get-LexiconTextItem, Find-LexiconHit, Invoke-LexiconCheck
+Export-ModuleMember -Function Import-LexiconData, Import-LexiconAllowList, Get-LexiconTextItem, Find-LexiconHit, Invoke-LexiconCheck, Get-BannedNameHit

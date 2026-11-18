@@ -33,6 +33,7 @@ The lexicon holds terms, rules and citations. It holds no text copied from Micro
 }
 ```
 
+- `scope` is `text` (user-facing text, the default) or `tracked-files` (banned names).
 - `kind` is `flag` (has `flagged` expressions) or `term` (vocabulary only).
 - `flagged` and `allowWhen` are .NET regular expressions. They ignore case unless the expression starts a group with `(?-i:`.
 - When one `allowWhen` expression matches the same text item, the hit is dropped.
@@ -61,6 +62,14 @@ Invoke-Pester -Path .\Tests\Lexicon.Guard.Tests.ps1
 ## Vendor it into another repository
 
 Copy the `lexicon` folder to `Lib\Lexicon` in the repository and copy `Tests\Lexicon.Guard.Tests.ps1` to its `Tests` folder. The guard finds `lexicon` or `Lib\Lexicon`. A vendored copy without `enforce.marker` reports only. Add `enforce.marker` in the fix pull request that clears the hits of that repository.
+
+## Banned names
+
+Entries with `"scope": "tracked-files"` (category `banned`) are matched against every line of every tracked text file, not only the user-facing text. They cover names that the owner bans from tracked files, release notes, workflow comments and commit text (vault decision D-32 of app-packager-suite). The owner extends the list: add a pattern to the entry `LX-040`. The patterns use character classes such as `[X]yz`, so that the lexicon file does not contain the banned names itself.
+
+The entry `LX-041` (category `banned-format-detection`) reports the package file format separately, so that the owner can allow-list code that detects the format as an installer type.
+
+`Invoke-LexiconCheck.ps1` reports both kinds of hit. The Pester guard checks `LX-040` in its own test (report-only until `enforce.marker` exists).
 
 ## Allow-list
 
