@@ -1,10 +1,11 @@
 {
   "schema": 1,
   "name": "configmgr-lexicon",
-  "version": "2026.11.18.1",
+  "version": "2026.11.18.2",
   "updated": "2026-11-18",
   "description": "Vocabulary and flagged phrases for user-facing text about Microsoft Configuration Manager. Terms and rules only, no Microsoft text. Every entry cites a Microsoft Learn URL or a code reference.",
   "fields": {
+    "scope": "text (default: user-facing text) or tracked-files (every line of every tracked text file; banned names)",
     "id": "LX-nnn, never reused",
     "category": "topic",
     "kind": "flag (has flagged phrases) or term (vocabulary only)",
@@ -23,6 +24,7 @@
       "id": "LX-001",
       "category": "vague-noun",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "inventory",
         "hardware inventory",
@@ -55,6 +57,7 @@
       "id": "LX-002",
       "category": "vague-verb",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "view",
         "review",
@@ -80,6 +83,7 @@
       "id": "LX-003",
       "category": "vague-verb",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "collect",
         "retrieve",
@@ -103,6 +107,7 @@
       "id": "LX-004",
       "category": "device-term",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "device",
         "computer",
@@ -138,6 +143,7 @@
       "id": "LX-005",
       "category": "client-term",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "device",
         "endpoint",
@@ -171,6 +177,7 @@
       "id": "LX-006",
       "category": "client-term",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "client health"
       ],
@@ -194,6 +201,7 @@
       "id": "LX-007",
       "category": "inventory-term",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "inventory data",
         "discovery data",
@@ -224,6 +232,7 @@
       "id": "LX-008",
       "category": "distribution-point",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "pull-distribution point",
         "content pull (pull-distribution point only)"
@@ -253,6 +262,7 @@
       "id": "LX-009",
       "category": "software-updates",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "synchronize",
         "synchronization"
@@ -282,6 +292,7 @@
       "id": "LX-010",
       "category": "product-name",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "ConfigMgr",
         "Configuration Manager"
@@ -311,6 +322,7 @@
       "id": "LX-011",
       "category": "product-name",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "ConfigMgr",
         "Configuration Manager"
@@ -345,6 +357,7 @@
       "id": "LX-012",
       "category": "product-name",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "Configuration Manager"
       ],
@@ -368,6 +381,7 @@
       "id": "LX-013",
       "category": "product-name",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "ConfigMgr"
       ],
@@ -390,6 +404,7 @@
       "id": "LX-014",
       "category": "console",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "Configuration Manager console"
       ],
@@ -416,6 +431,7 @@
       "id": "LX-015",
       "category": "console",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "Assets and Compliance",
         "Software Library",
@@ -442,6 +458,7 @@
       "id": "LX-016",
       "category": "cycle",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "Hardware Inventory Cycle",
         "hardware inventory"
@@ -471,6 +488,7 @@
       "id": "LX-017",
       "category": "cycle",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "Discovery Data Collection Cycle",
         "heartbeat discovery"
@@ -495,6 +513,7 @@
       "id": "LX-018",
       "category": "cycle",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "Machine Policy Retrieval & Evaluation Cycle",
         "Download Computer Policy"
@@ -520,6 +539,7 @@
       "id": "LX-019",
       "category": "legacy-term",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "deployment"
       ],
@@ -545,6 +565,7 @@
       "id": "LX-020",
       "category": "software-updates",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "software update",
         "software update group"
@@ -577,6 +598,7 @@
       "id": "LX-021",
       "category": "site-role",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "SMS Provider",
         "site server"
@@ -599,6 +621,7 @@
       "id": "LX-022",
       "category": "style",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "select"
       ],
@@ -626,6 +649,7 @@
       "id": "LX-023",
       "category": "style",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "sign in"
       ],
@@ -655,6 +679,7 @@
       "id": "LX-024",
       "category": "style",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "for example",
         "that is"
@@ -681,6 +706,7 @@
       "id": "LX-025",
       "category": "style",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "use"
       ],
@@ -718,6 +744,7 @@
       "id": "LX-026",
       "category": "style",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "(delete the word)"
       ],
@@ -748,6 +775,7 @@
       "id": "LX-027",
       "category": "bias-free",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "allowlist",
         "blocklist",
@@ -774,6 +802,7 @@
       "id": "LX-028",
       "category": "distribution-point",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "distribution point"
       ],
@@ -795,6 +824,7 @@
       "id": "LX-029",
       "category": "jargon",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "content",
         "source files"
@@ -819,6 +849,7 @@
       "id": "LX-030",
       "category": "jargon",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "phased deployment"
       ],
@@ -842,6 +873,7 @@
       "id": "LX-031",
       "category": "jargon",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "version check"
       ],
@@ -862,6 +894,7 @@
       "id": "LX-032",
       "category": "jargon",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "device",
         "computer"
@@ -888,6 +921,7 @@
       "id": "LX-033",
       "category": "jargon",
       "kind": "flag",
+      "scope": "text",
       "preferred": [
         "view the hardware inventory, discovery data and client health of one device"
       ],
@@ -905,9 +939,60 @@
       "notes": "Owner decision on the product vocabulary."
     },
     {
+      "id": "LX-040",
+      "category": "banned",
+      "kind": "flag",
+      "scope": "tracked-files",
+      "preferred": [
+        "(no replacement: do not name it)"
+      ],
+      "flagged": [
+        "\\b[C]hoco(?:latey(?:\\.org)?)?\\b",
+        "\\b[C]hocolatey[A-Za-z]+",
+        "\\b[P]atch\\s?[M]y\\s?[P]C\\b",
+        "\\b[P]MPC\\b",
+        "\\b[p]atchmypc\\w*",
+        "\\b[N]uGet (?:feed|source|repo(?:sitory)?|v2 feed)\\b"
+      ],
+      "allowWhen": [],
+      "context": "Never in a tracked file, a release note, a workflow comment or a commit text. The names are never a source, a tool or a dependency. The owner extends the list.",
+      "replacement": "Delete the mention. Name the real source: for an installer download, the vendor URL or the official archive with a SHA-256 check. A workflow that needs a tool downloads the pinned official archive.",
+      "source": [
+        "vault decision D-32 of app-packager-suite",
+        "vault wiki/concepts/comment-contract.md (banned in tracked files)"
+      ],
+      "status": "verified",
+      "severity": "error",
+      "notes": "Owner rule. The patterns use character classes so that this file does not contain the banned names. The list holds the package manager that the owner named, the second banned product, its abbreviation, and the feed wording. The vault marks only the product as a competitor (app-packager-next CLAUDE.md); the owner has not listed the other names. Add a pattern here when the owner names one."
+    },
+    {
+      "id": "LX-041",
+      "category": "banned-format-detection",
+      "kind": "flag",
+      "scope": "tracked-files",
+      "preferred": [
+        "(owner decides)"
+      ],
+      "flagged": [
+        "\\.nupkg\\b",
+        "\\bnupkg\\b",
+        "\\bNuGet packages?\\b"
+      ],
+      "allowWhen": [],
+      "context": "Report separately from plain mentions. Installer Analysis code, tests and docs that detect the .nupkg package format as an installer format are a candidate for the allow-list. The owner decides. Precedent: another vendor's installer type stays a supported installer type.",
+      "replacement": "Allow-list the format detection with a reason, or remove it.",
+      "source": [
+        "vault decision D-32 of app-packager-suite"
+      ],
+      "status": "unverified",
+      "severity": "info",
+      "notes": "NuGet packages are also a normal .NET build input; a hit in a project file or a build workflow is a mention of the format, not of the banned name."
+    },
+    {
       "id": "LX-100",
       "category": "object-type",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "Device"
       ],
@@ -927,6 +1012,7 @@
       "id": "LX-101",
       "category": "object-type",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "User",
         "User Group",
@@ -948,6 +1034,7 @@
       "id": "LX-102",
       "category": "object-type",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "Application",
         "Deployment Type",
@@ -976,6 +1063,7 @@
       "id": "LX-103",
       "category": "object-type",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "Deployment",
         "Deployment Status",
@@ -997,6 +1085,7 @@
       "id": "LX-104",
       "category": "client",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "Configuration Manager client",
         "Install Client",
@@ -1022,6 +1111,7 @@
       "id": "LX-105",
       "category": "inventory",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "hardware inventory",
         "software inventory",
@@ -1044,6 +1134,7 @@
       "id": "LX-106",
       "category": "inventory",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "SMS_G_System_* classes",
         "v_GS_* views",
@@ -1067,6 +1158,7 @@
       "id": "LX-107",
       "category": "discovery",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "discovery data",
         "SMS_R_System",
@@ -1096,6 +1188,7 @@
       "id": "LX-108",
       "category": "database",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "site database",
         "SQL Server view",
@@ -1117,6 +1210,7 @@
       "id": "LX-109",
       "category": "cycle",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "Hardware Inventory Cycle",
         "Software Inventory Cycle",
@@ -1146,6 +1240,7 @@
       "id": "LX-110",
       "category": "schedule",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "Send Schedule message ids: 1 Hardware Inventory",
         "2 Software Inventory",
@@ -1170,6 +1265,7 @@
       "id": "LX-111",
       "category": "distribution-point",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "distribution point",
         "pull-distribution point",
@@ -1195,6 +1291,7 @@
       "id": "LX-112",
       "category": "collection",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "collection",
         "membership rule",
@@ -1220,6 +1317,7 @@
       "id": "LX-113",
       "category": "software-updates",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "Synchronize Software Updates",
         "software update point",
@@ -1244,6 +1342,7 @@
       "id": "LX-114",
       "category": "site-role",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "site server",
         "SMS Provider",
@@ -1272,6 +1371,7 @@
       "id": "LX-115",
       "category": "generic",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "endpoint"
       ],
@@ -1290,6 +1390,7 @@
       "id": "LX-116",
       "category": "scripting",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "Run Scripts",
         "CMPivot",
@@ -1313,6 +1414,7 @@
       "id": "LX-117",
       "category": "cmdlets",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "Get-CMDevice",
         "Get-CMDeviceCollection",
@@ -1339,6 +1441,7 @@
       "id": "LX-118",
       "category": "style",
       "kind": "term",
+      "scope": "text",
       "preferred": [
         "sentence-case headings",
         "sign in",

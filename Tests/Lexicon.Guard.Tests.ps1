@@ -42,7 +42,7 @@ Describe 'ConfigMgr lexicon data' {
 
     It 'has the documented fields on every entry' {
         $lex = Import-LexiconData -Path (Join-Path $script:LexDir 'configmgr-lexicon.json')
-        $names = 'id', 'category', 'kind', 'preferred', 'flagged', 'allowWhen', 'context', 'replacement', 'source', 'status', 'severity', 'notes'
+        $names = 'id', 'category', 'scope', 'kind', 'preferred', 'flagged', 'allowWhen', 'context', 'replacement', 'source', 'status', 'severity', 'notes'
         foreach ($e in $lex.entries) {
             foreach ($n in $names) { ($e.PSObject.Properties.Name -contains $n) | Should -BeTrue -Because ('{0} has no field {1}' -f $e.id, $n) }
             $e.status | Should -BeIn 'verified', 'unverified' -Because ('{0} status' -f $e.id)
@@ -80,6 +80,38 @@ Describe 'ConfigMgr lexicon data' {
         $bad = [pscustomobject]@{ File = 'x.md'; Line = 2; Kind = 'markdown'; Text = 'The tool can pull the data of the device.' }
         @(Find-LexiconHit -Item $ok -Lexicon $lex | Where-Object RuleId -eq 'LX-008').Count | Should -Be 0
         @(Find-LexiconHit -Item $bad -Lexicon $lex | Where-Object RuleId -eq 'LX-008').Count | Should -Be 1
+    }
+}
+
+Describe 'Banned names' {
+    It 'finds a seeded banned name in a tracked-file line and keeps format detection apart' {
+        $lex = Import-LexiconData -Path (Join-Path $script:LexDir 'configmgr-lexicon.json')
+        $tmp = Join-Path ([IO.Path]::GetTempPath()) ('lexban-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $tmp | Out-Null
+        try {
+            $name = 'Chocol' + 'atey'
+            Set-Content -LiteralPath (Join-Path $tmp 'a.md') -Value ('Install it with ' + $name + ' today.'), 'The tool reads a .nupkg file.', 'Nothing here.' -Encoding ascii
+            $hits = @(Get-BannedNameHit -Root $tmp -Lexicon $lex)
+            @($hits | Where-Object { $_.RuleId -eq 'LX-040' -and $_.Line -eq 1 }).Count | Should -Be 1
+            @($hits | Where-Object { $_.RuleId -eq 'LX-041' -and $_.Line -eq 2 }).Count | Should -Be 1
+            @($hits | Where-Object { $_.Line -eq 3 }).Count | Should -Be 0
+        }
+        finally { Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'has no banned name in a tracked file (report-only until enforce.marker exists)' {
+        $lex = Import-LexiconData -Path (Join-Path $script:LexDir 'configmgr-lexicon.json')
+        $allow = @(Import-LexiconAllowList -Path (Join-Path $script:LexDir 'lexicon-allowlist.json'))
+        $hits = @(Get-BannedNameHit -Root $script:Root -Lexicon $lex -AllowList $allow | Where-Object RuleId -eq 'LX-040')
+        $lines = @($hits | Select-Object -First 40 | ForEach-Object { '{0}:{1} [{2}] {3}' -f $_.File, $_.Line, $_.RuleId, $_.Text })
+        if ($script:ReportOnly) {
+            Write-Host ('LEXICON REPORT-ONLY: {0} banned-name hits' -f $hits.Count)
+            $lines | ForEach-Object { Write-Host $_ }
+            Set-ItResult -Skipped -Because ('report-only mode: {0} banned-name hits' -f $hits.Count) | Out-Null
+        }
+        else {
+            $lines | Should -BeNullOrEmpty -Because 'banned names must not appear in a tracked file'
+        }
     }
 }
 

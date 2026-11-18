@@ -43,6 +43,10 @@ param(
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'Lexicon.psm1') -Force
 $hits = @(Invoke-LexiconCheck -Root $Root -LexiconPath $LexiconPath -AllowListPath $AllowListPath -RepoType $RepoType)
+# Banned names: every line of every tracked file (entries with scope tracked-files).
+$banLexicon = Import-LexiconData -Path $LexiconPath
+$banAllow = @(Import-LexiconAllowList -Path $AllowListPath)
+$hits = @($hits) + @(Get-BannedNameHit -Root $Root -Lexicon $banLexicon -AllowList $banAllow)
 
 foreach ($h in ($hits | Sort-Object RuleId, File, Line)) {
     Write-Host ('{0}:{1}: [{2} {3}] "{4}" -> {5}' -f $h.File, $h.Line, $h.RuleId, $h.Severity, $h.Phrase, $h.Replacement)
