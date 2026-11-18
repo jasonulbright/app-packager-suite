@@ -83,6 +83,29 @@ Describe 'ConfigMgr lexicon data' {
     }
 }
 
+Describe 'Text extraction' {
+    It 'finds a sentence kept in a variable, a hashtable value and a method argument' {
+        $tmp = Join-Path ([IO.Path]::GetTempPath()) ('lexext-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $tmp | Out-Null
+        try {
+            $code = @(
+                '$script:StatusText = "Ready. Click Scan."',
+                '$h = @{ Status = "Ready. Click Refresh now." }',
+                '$sb.Append("Ready. Click the button.") | Out-Null',
+                '$x = Get-Thing -Name "SomeName"',
+                '$sql = "SELECT Name FROM v_R_System WHERE ResourceID = 1."'
+            )
+            Set-Content -LiteralPath (Join-Path $tmp 'a.ps1') -Value $code -Encoding ascii
+            $items = @(Get-LexiconTextItem -Root $tmp)
+            @($items | Where-Object { $_.Text -like '*Click Scan*' }).Count | Should -Be 1
+            @($items | Where-Object { $_.Text -like '*Click Refresh*' }).Count | Should -Be 1
+            @($items | Where-Object { $_.Text -like '*Click the button*' }).Count | Should -Be 1
+            @($items | Where-Object { $_.Text -like '*SELECT*' -or $_.Text -like '*SomeName*' }).Count | Should -Be 0
+        }
+        finally { Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
 Describe 'Banned names' {
     It 'finds a seeded banned name in a tracked-file line and keeps format detection apart' {
         $lex = Import-LexiconData -Path (Join-Path $script:LexDir 'configmgr-lexicon.json')
