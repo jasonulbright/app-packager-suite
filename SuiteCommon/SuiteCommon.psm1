@@ -1761,8 +1761,19 @@ function Stop-SuiteBgWork {
     param(
         $PowerShell,
         $Timer,
-        [array]$Graveyard = @()
+        [array]$Graveyard = @(),
+        $Handle,
+        [switch]$Discard
     )
+    # -Handle is the object of Start-SuiteBgWork. With -Discard the cancel flag is set (the worker stops before its next
+    # read), no more item or completion callback runs, and the pipeline is stopped without blocking the UI thread.
+    if ($Handle) {
+        $Handle.Discarded = [bool]$Discard
+        try { $Handle.State['Cancel'] = $true } catch { $null = $_ }
+        try { $Handle.State['Queue'].Clear() } catch { $null = $_ }
+        if (-not $PowerShell) { $PowerShell = $Handle.PowerShell }
+        if (-not $Timer) { $Timer = $Handle.Timer }
+    }
     if ($Timer) { try { $Timer.Stop() } catch { $null = $_ } }
     $yard = @($Graveyard)
     if ($PowerShell) {
@@ -1791,6 +1802,270 @@ function Close-SuiteBgRunspace {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Tears down ephemeral runspace plumbing.')]
     param($Runspace)
     if ($Runspace) { try { $Runspace.CloseAsync() } catch { $null = $_ } }
+}
+
+# =============================================================================
+# Loading robustness (Q-47): retry, member chunks, background work with cancel
+# =============================================================================
+
+function Test-SuiteTransientFault {
+    <#
+    .SYNOPSIS
+        True when an error looks like a network or provider hiccup that a retry can cure.
+    .DESCRIPTION
+        Timeouts, a lost connection, an unreachable RPC server or WinRM endpoint count.
+        A bad query, a missing object, denied access and a cancel do not.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$ErrorRecord)
+    $ex = if ($ErrorRecord -is [System.Management.Automation.ErrorRecord]) { $ErrorRecord.Exception } else { $ErrorRecord }
+    $text = ''
+    for ($e = $ex; $e; $e = $e.InnerException) { $text += ' ' + $e.GetType().Name + ' ' + $e.Message }
+    if ($text -match 'OperationCanceled|PipelineStopped') { return $false }
+    return [bool]($text -match '(?i)timed? ?out|timeout|RPC server|0x800706B[AE]|0x80041032|0x800704C[0-9A-F]|temporarily|unavailable|connection (was )?(closed|reset|lost|forcibly|refused)|network (path|name|error)|WinRM cannot|cannot connect|transport|socket|name could not be resolved|server too busy|too many requests|The specified network|provider load failure|shutting down|quota violation|0x80041013|0x80041033|0x8004106C')
+}
+
+function Invoke-SuiteCMRead {
+    <#
+    .SYNOPSIS
+        Runs a Configuration Manager read and retries it for transient faults only.
+    .DESCRIPTION
+        Up to MaxAttempts attempts, with DelaySeconds between them (2 s, then 6 s). Each failed attempt is logged.
+        A fault that is not transient is not retried. When the attempts are used up, the error is thrown, or, when
+        -Notes is given, one note is added to it and Default is returned, so that the rest of a load still shows.
+        -Cancel is a hashtable with a Cancel key: when the key is true, the call stops with an OperationCanceledException.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Runs a read only; changes nothing.')]
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][scriptblock]$ScriptBlock,
+        [string]$Description = 'Configuration Manager read',
+        [int]$MaxAttempts = 3,
+        [int[]]$DelaySeconds = @(2, 6),
+        [scriptblock]$IsTransient = { param($er) Test-SuiteTransientFault -ErrorRecord $er },
+        [System.Collections.IDictionary]$Cancel,
+        [System.Collections.IList]$Notes,
+        $Default = $null
+    )
+    for ($attempt = 1; ; $attempt++) {
+        if ($Cancel -and $Cancel['Cancel']) { throw (New-Object System.OperationCanceledException("$Description was cancelled.")) }
+        try {
+            $result = & $ScriptBlock
+            return $result
+        }
+        catch {
+            $err = $_
+            if ($err.Exception -is [System.OperationCanceledException]) { throw }
+            $transient = [bool](& $IsTransient $err)
+            if ($transient -and $attempt -lt $MaxAttempts) {
+                $delay = if ($DelaySeconds.Count -gt 0) { $DelaySeconds[[Math]::Min($attempt - 1, $DelaySeconds.Count - 1)] } else { 0 }
+                Write-Log ("{0}: attempt {1} of {2} failed ({3}); trying again in {4} s." -f $Description, $attempt, $MaxAttempts, $err.Exception.Message, $delay) -Level WARN
+                $until = (Get-Date).AddSeconds($delay)
+                while ((Get-Date) -lt $until) {
+                    if ($Cancel -and $Cancel['Cancel']) { throw (New-Object System.OperationCanceledException("$Description was cancelled.")) }
+                    Start-Sleep -Milliseconds 200
+                }
+                continue
+            }
+            $message = '{0} failed after {1} attempt(s): {2}' -f $Description, $attempt, $err.Exception.Message
+            Write-Log $message -Level WARN
+            if ($null -ne $Notes) { [void]$Notes.Add($message); return $Default }
+            throw
+        }
+    }
+}
+
+function Get-SuiteCMWqlReader {
+    # The default reader of the member helpers: one WQL query against the SMS Provider of the connected site.
+    [CmdletBinding()]
+    param([string]$ComputerName, [string]$Namespace, [int]$TimeoutSeconds = 120)
+    if (-not $ComputerName -or -not $Namespace) {
+        $info = Get-CMConnectionInfo
+        if (-not $info) { throw 'Not connected to a site: give -ComputerName and -Namespace, or connect first.' }
+        if (-not $ComputerName) { $ComputerName = $info.SMSProvider }
+        if (-not $Namespace) { $Namespace = 'root\sms\site_' + $info.SiteCode }
+    }
+    # On the provider computer itself (localhost or .) the read goes without -ComputerName, so no remote logon is needed.
+    if ($ComputerName -in 'localhost', '.') {
+        return { param($Query) Get-CimInstance -Namespace $Namespace -Query $Query -OperationTimeoutSec $TimeoutSeconds -ErrorAction Stop }.GetNewClosure()
+    }
+    return { param($Query) Get-CimInstance -ComputerName $ComputerName -Namespace $Namespace -Query $Query -OperationTimeoutSec $TimeoutSeconds -ErrorAction Stop }.GetNewClosure()
+}
+
+function Test-SuiteCollectionId {
+    param([string]$CollectionId)
+    return [bool]($CollectionId -match '^[A-Za-z0-9]{8}$')
+}
+
+function Get-SuiteCollectionMemberPlan {
+    <#
+    .SYNOPSIS
+        Reads only the ResourceIDs of a collection and cuts them into ResourceID ranges of ChunkSize members each.
+    .DESCRIPTION
+        One light read (one column) gives the exact boundaries, so each range returns ChunkSize rows whatever the
+        spread of the IDs is. Returns Total and Ranges (From, To, Count).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$CollectionId,
+        [int]$ChunkSize = 2000,
+        [scriptblock]$Reader
+    )
+    if (-not (Test-SuiteCollectionId $CollectionId)) { throw "Not a collection ID: '$CollectionId'." }
+    if ($ChunkSize -lt 1) { throw 'ChunkSize must be at least 1.' }
+    if (-not $Reader) { $Reader = Get-SuiteCMWqlReader }
+    $rows = @(& $Reader ('SELECT ResourceID FROM SMS_CM_RES_COLL_{0}' -f $CollectionId))
+    $ids = New-Object 'long[]' $rows.Count
+    for ($i = 0; $i -lt $rows.Count; $i++) { $ids[$i] = [long]$rows[$i].ResourceID }
+    [Array]::Sort($ids)
+    $ranges = New-Object System.Collections.Generic.List[object]
+    for ($start = 0; $start -lt $ids.Length; $start += $ChunkSize) {
+        $end = [Math]::Min($start + $ChunkSize, $ids.Length) - 1
+        $ranges.Add([pscustomobject]@{ From = $ids[$start]; To = $ids[$end]; Count = ($end - $start + 1) })
+    }
+    return [pscustomobject]@{ CollectionId = $CollectionId; Total = $ids.Length; Ranges = $ranges.ToArray() }
+}
+
+function Get-SuiteCollectionMemberChunk {
+    <#
+    .SYNOPSIS
+        Reads the members of one ResourceID range of a collection, with only the columns that the grids show.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$CollectionId,
+        [Parameter(Mandatory)][long]$FromResourceId,
+        [Parameter(Mandatory)][long]$ToResourceId,
+        [scriptblock]$Reader
+    )
+    if (-not (Test-SuiteCollectionId $CollectionId)) { throw "Not a collection ID: '$CollectionId'." }
+    if (-not $Reader) { $Reader = Get-SuiteCMWqlReader }
+    $query = 'SELECT ResourceID, Name, Domain, IsClient, IsActive FROM SMS_CM_RES_COLL_{0} WHERE ResourceID >= {1} AND ResourceID <= {2}' -f $CollectionId, $FromResourceId, $ToResourceId
+    foreach ($m in @(& $Reader $query)) {
+        [pscustomobject]@{ Name = $m.Name; ResourceID = $m.ResourceID; Domain = $m.Domain; IsClient = $m.IsClient; IsActive = $m.IsActive }
+    }
+}
+
+function Read-SuiteCollectionMember {
+    <#
+    .SYNOPSIS
+        Worker for a member load. Runs in the background runspace and fills State.Queue with one array per chunk.
+    .DESCRIPTION
+        State is the hashtable of Start-SuiteBgWork (Queue, Cancel, Notes, Progress). Every read goes through
+        Invoke-SuiteCMRead: a transient fault is retried; a chunk that still fails adds one note and the load goes on
+        with the next chunk, so the grid keeps the partial data. The cancel flag is read before every chunk.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][System.Collections.IDictionary]$State,
+        [Parameter(Mandatory)][string]$CollectionId,
+        [int]$ChunkSize = 2000,
+        [scriptblock]$Reader,
+        [int[]]$DelaySeconds = @(2, 6),
+        [string]$ComputerName,
+        [string]$Namespace
+    )
+    # A fresh background runspace has no connection record: the shell passes the provider and the namespace.
+    if (-not $Reader) { $Reader = Get-SuiteCMWqlReader -ComputerName $ComputerName -Namespace $Namespace }
+    $plan = Invoke-SuiteCMRead -Description "Member IDs of $CollectionId" -Cancel $State -DelaySeconds $DelaySeconds -ScriptBlock {
+        Get-SuiteCollectionMemberPlan -CollectionId $CollectionId -ChunkSize $ChunkSize -Reader $Reader
+    }
+    $State['Total'] = $plan.Total
+    $loaded = 0
+    foreach ($range in $plan.Ranges) {
+        if ($State['Cancel']) { throw (New-Object System.OperationCanceledException("The member load of $CollectionId was cancelled.")) }
+        $rows = @(Invoke-SuiteCMRead -Description ("Members {0}-{1} of {2}" -f $range.From, $range.To, $CollectionId) -Cancel $State -DelaySeconds $DelaySeconds -Notes $State['Notes'] -Default @() -ScriptBlock {
+                Get-SuiteCollectionMemberChunk -CollectionId $CollectionId -FromResourceId $range.From -ToResourceId $range.To -Reader $Reader
+            })
+        $loaded += $rows.Count
+        $State['Loaded'] = $loaded
+        $State['Progress'] = 'Loaded {0} of {1} members' -f $loaded, $plan.Total
+        if ($rows.Count -gt 0) { $State['Queue'].Enqueue($rows) }
+    }
+}
+
+function Start-SuiteBgWork {
+    <#
+    .SYNOPSIS
+        Runs a script in the background runspace and hands its output to the UI thread in pieces.
+    .DESCRIPTION
+        ScriptBlock gets the shared State hashtable first, then ArgumentList. It runs in the runspace, so it cannot use
+        variables of the caller (it is passed as text). State has Queue (items for OnItem), Notes, Progress, Cancel,
+        Done and Error. A timer on the UI thread calls Receive-SuiteBgWork: OnItem runs for each queued item (at most
+        MaxItemsPerTick per tick), OnDone runs once when the work has ended and the queue is empty. No Configuration
+        Manager call runs on the UI thread. Stop it with Stop-SuiteBgWork -Handle $h -Discard.
+        Pass -NoTimer to drive Receive-SuiteBgWork yourself (tests).
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Starts ephemeral background plumbing only.')]
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Runspace,
+        [Parameter(Mandatory)][scriptblock]$ScriptBlock,
+        [object[]]$ArgumentList = @(),
+        [scriptblock]$OnItem,
+        [scriptblock]$OnDone,
+        [int]$IntervalMs = 100,
+        [int]$MaxItemsPerTick = 4,
+        [switch]$NoTimer
+    )
+    $state = [hashtable]::Synchronized(@{
+            Queue    = [System.Collections.Queue]::Synchronized((New-Object System.Collections.Queue))
+            Notes    = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+            Progress = ''
+            Cancel   = $false
+            Done     = $false
+            Error    = $null
+            Total    = 0
+            Loaded   = 0
+        })
+    $ps = [powershell]::Create()
+    $ps.Runspace = $Runspace
+    [void]$ps.AddScript({
+            param($State, $ScriptText, $Arguments)
+            try { & ([scriptblock]::Create($ScriptText)) $State @Arguments }
+            catch { if ($_.Exception -isnot [System.OperationCanceledException]) { $State['Error'] = $_.Exception.Message } else { $State['Cancelled'] = $true } }
+            finally { $State['Done'] = $true }
+        }).AddArgument($state).AddArgument($ScriptBlock.ToString()).AddArgument($ArgumentList)
+    $handle = [pscustomobject]@{
+        State = $state; PowerShell = $ps; Async = $null; Timer = $null; OnItem = $OnItem; OnDone = $OnDone
+        MaxItemsPerTick = $MaxItemsPerTick; Finished = $false; Discarded = $false
+    }
+    $handle.Async = $ps.BeginInvoke()
+    if (-not $NoTimer) {
+        $timer = New-Object System.Windows.Threading.DispatcherTimer
+        $timer.Interval = [TimeSpan]::FromMilliseconds($IntervalMs)
+        $timer.Tag = $handle
+        $timer.Add_Tick({ Receive-SuiteBgWork -Handle $this.Tag })
+        $handle.Timer = $timer
+        $timer.Start()
+    }
+    return $handle
+}
+
+function Receive-SuiteBgWork {
+    <#
+    .SYNOPSIS
+        One tick of a Start-SuiteBgWork handle: passes queued items to OnItem, and calls OnDone at the end.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Handle)
+    if ($Handle.Finished -or $Handle.Discarded) { return $true }
+    $state = $Handle.State
+    $count = 0
+    while ($count -lt $Handle.MaxItemsPerTick -and $state['Queue'].Count -gt 0) {
+        $item = $state['Queue'].Dequeue()
+        $count++
+        if ($Handle.OnItem) { try { & $Handle.OnItem $item $state } catch { Write-Log ("Background work item failed: {0}" -f $_.Exception.Message) -Level WARN } }
+    }
+    if ($state['Done'] -and $state['Queue'].Count -eq 0) {
+        $Handle.Finished = $true
+        if ($Handle.Timer) { try { $Handle.Timer.Stop() } catch { $null = $_ } }
+        try { [void]$Handle.PowerShell.EndInvoke($Handle.Async) } catch { $null = $_ }
+        try { $Handle.PowerShell.Dispose() } catch { $null = $_ }
+        if ($Handle.OnDone) { try { & $Handle.OnDone $state } catch { Write-Log ("Background work completion failed: {0}" -f $_.Exception.Message) -Level WARN } }
+        return $true
+    }
+    return $false
 }
 
 # =============================================================================

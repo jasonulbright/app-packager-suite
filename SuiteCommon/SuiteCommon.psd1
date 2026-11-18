@@ -62,6 +62,13 @@
         'New-SuiteBgRunspace'
         'Stop-SuiteBgWork'
         'Close-SuiteBgRunspace'
+        'Start-SuiteBgWork'
+        'Receive-SuiteBgWork'
+        'Test-SuiteTransientFault'
+        'Invoke-SuiteCMRead'
+        'Get-SuiteCollectionMemberPlan'
+        'Get-SuiteCollectionMemberChunk'
+        'Read-SuiteCollectionMember'
 
         # Window test helpers
         'Get-SuiteContrastRatio'
