@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [2026.11.18.0092] - 2026-11-18
+
+## 1 component refreshed with the App Installer packager and fixes
+
+### Installer
+
+- Carry app-packager 2026.11.18.0145.
+- Add the App Installer (WinGet) packager to app-packager.
+- Package the newest PowerShell 7 release that has an MSI.
+- Fix the NVD request limit in Check CVEs and the version monitor.
+- Log the count of products that need an update after Check Latest and Check ConfigMgr.
+- Add the Lexicon guard to the repository guard matrix.
+- Stop only the processes of the lab probe itself when a probe ends.
+
 ## [2026.11.18.0091] - 2026-11-18
 
 ## 1 component refreshed with two packagers
