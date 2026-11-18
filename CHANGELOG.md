@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Tests
+
+- Add the ConfigMgr lexicon (`lexicon\configmgr-lexicon.json`) and a checker for the user-facing text, with a Pester guard in report-only mode.
+
 ## [2026.11.18.0090] - 2026-11-18
 
 ## 1 component refreshed with supersedence
