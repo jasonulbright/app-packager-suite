@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "configmgr-lexicon",
-  "version": "2026.11.18.2",
+  "version": "2026.11.18.3",
   "updated": "2026-11-18",
   "description": "Vocabulary and flagged phrases for user-facing text about Microsoft Configuration Manager. Terms and rules only, no Microsoft text. Every entry cites a Microsoft Learn URL or a code reference.",
   "fields": {
@@ -66,10 +66,10 @@
         "list"
       ],
       "flagged": [
-        "(?:^|[.!?:]\\s+)(?-i:Read) the\\b"
+        "(?:^|[.!?:]\\s+)(?-i:Read)\\s+(?:the|a|an|each|every|all)\\b"
       ],
       "allowWhen": [],
-      "context": "As an imperative that opens a sentence or a heading. A script that reads a file or a registry value may say reads.",
+      "context": "As an imperative that opens a sentence or a heading ('Read the ...', 'Read a ...', 'Read each ...'). A script that reads a file or a registry value may say reads.",
       "replacement": "Say what the reader does or sees: 'View the ...', 'Review the ...', 'The list shows ...'. For data that the tool queries, name the source (class, view, cmdlet).",
       "source": [
         "https://learn.microsoft.com/contribute/content/style-quick-start",

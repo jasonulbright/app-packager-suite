@@ -237,6 +237,24 @@ function Get-PowerShellTextItem {
         if (-not $t.Pipeline) { continue }
         foreach ($s in (Get-StringNodeText -Node $t.Pipeline)) { if (-not $s.Here) { & $emit $s.Text $s.Line 'throw' } }
     }
+    # 3b. any other sentence-like string literal: a status text kept in a variable, a hashtable value, a method argument
+    $allStrings = $ast.FindAll({
+            param($n)
+            $n -is [System.Management.Automation.Language.StringConstantExpressionAst] -or
+            $n -is [System.Management.Automation.Language.ExpandableStringExpressionAst]
+        }, $true)
+    foreach ($sc in $allStrings) {
+        if ($sc.StringConstantType -like 'Here*') { continue }
+        $p = $sc.Parent
+        if ($p -is [System.Management.Automation.Language.MemberExpressionAst] -and $p.Member -eq $sc) { continue }
+        if ($p -is [System.Management.Automation.Language.IndexExpressionAst] -and $p.Index -eq $sc) { continue }
+        if ($p -is [System.Management.Automation.Language.InvokeMemberExpressionAst] -and $p.Member -eq $sc) { continue }
+        if ($p -is [System.Management.Automation.Language.CommandAst] -and $p.CommandElements[0] -eq $sc) { continue }
+        $raw = ($sc.Value -replace '\s+', ' ').Trim()
+        if ($raw -notmatch '^[A-Z].{10,}[.!?:]$') { continue }
+        if (-not (Test-ProseCandidate -Text (ConvertTo-FormatFreeText -Text $raw) -Strict:$true)) { continue }
+        & $emit $sc.Value $sc.Extent.StartLineNumber 'string-literal'
+    }
     # 4. XAML in here-strings
     $here = $ast.FindAll({
             param($n)
