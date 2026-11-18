@@ -200,6 +200,57 @@
       "file": "docs/tools/installer-analysis.md",
       "rule": "LX-041",
       "reason": "Installer Analysis detects the .nupkg package format as an installer format. This is format detection, not a use of the banned product (decision D-33 of app-packager-suite). Precedent: InstallShield stays a supported installer type."
+    },
+    {
+      "file": "Packagers/Templates/*",
+      "rule": "LX-040",
+      "reason": "Supported installer format (package format of the package manager and NuGet), owner decision D-33. The support stays; this is not a use of the product as a source or a tool."
+    },
+    {
+      "file": "Packagers/Templates/*",
+      "rule": "LX-041",
+      "reason": "Supported installer format (package format of the package manager and NuGet), owner decision D-33. The support stays; this is not a use of the product as a source or a tool."
+    },
+    {
+      "file": "README.md",
+      "rule": "LX-040",
+      "phrase": "(?i)^[c]hoco(?:[l]atey)?$|^[c]hocolatey\\w*$",
+      "reason": "Supported installer format (package format of the package manager and NuGet), owner decision D-33. The support stays; this is not a use of the product as a source or a tool."
+    },
+    {
+      "file": "README.md",
+      "rule": "LX-041",
+      "reason": "Supported installer format (package format of the package manager and NuGet), owner decision D-33. The support stays; this is not a use of the product as a source or a tool."
+    },
+    {
+      "file": "SOURCES.md",
+      "rule": "LX-040",
+      "reason": "Supported installer format (package format of the package manager and NuGet), owner decision D-33. The support stays; this is not a use of the product as a source or a tool."
+    },
+    {
+      "file": "SOURCES.md",
+      "rule": "LX-041",
+      "reason": "Supported installer format (package format of the package manager and NuGet), owner decision D-33. The support stays; this is not a use of the product as a source or a tool."
+    },
+    {
+      "file": "src/ApplicationPackagerEngine/Services/SilentSwitchDatabase.cs",
+      "rule": "LX-040",
+      "reason": "Supported installer format (package format of the package manager and NuGet), owner decision D-33. The support stays; this is not a use of the product as a source or a tool."
+    },
+    {
+      "file": "src/ApplicationPackagerEngine/Services/SilentSwitchDatabase.cs",
+      "rule": "LX-041",
+      "reason": "Supported installer format (package format of the package manager and NuGet), owner decision D-33. The support stays; this is not a use of the product as a source or a tool."
+    },
+    {
+      "file": "tests/ApplicationPackagerEngine.Tests/SilentSwitchDatabaseTests.cs",
+      "rule": "LX-040",
+      "reason": "Supported installer format (package format of the package manager and NuGet), owner decision D-33. The support stays; this is not a use of the product as a source or a tool."
+    },
+    {
+      "file": "tests/ApplicationPackagerEngine.Tests/SilentSwitchDatabaseTests.cs",
+      "rule": "LX-041",
+      "reason": "Supported installer format (package format of the package manager and NuGet), owner decision D-33. The support stays; this is not a use of the product as a source or a tool."
     }
   ]
 }
