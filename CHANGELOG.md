@@ -8,8 +8,10 @@
 
 ### Installer
 
-- Carry app-packager 2026.11.18.0143 with supersedence, review before staging and requirement translation.
-- Retry the NSIS install in the workflows when the Chocolatey feed answers 504.
+- Carry app-packager 2026.11.18.0143.
+- Add supersedence to app-packager: the resolver, Apply Supersedence, Rewrite and Restore Old Versions, the older-application override and the One Click pass.
+- Add review before staging and requirement translation with accepted drops.
+- Add options for the minimum Windows release, the default cadence, the architecture in the title and the update check at startup.
 
 ## [2026.11.18.0089] - 2026-11-18
 
