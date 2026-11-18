@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [2026.11.18.0090] - 2026-11-18
+
+## 1 component refreshed with supersedence
+
+### Installer
+
+- Carry app-packager 2026.11.18.0143 with supersedence, review before staging and requirement translation.
+- Retry the NSIS install in the workflows when the Chocolatey feed answers 504.
+
 ## [2026.11.18.0089] - 2026-11-18
 
 ## 12 components refreshed for large sites
