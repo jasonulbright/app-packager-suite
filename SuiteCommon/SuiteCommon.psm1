@@ -6,12 +6,12 @@
     Vendored into each consumer tool at Lib\SuiteCommon\ by
     sync-suitecommon.ps1. Provides:
       - Structured logging (Initialize-Logging, Write-Log, Write-LogErrorRecord)
-      - CM site connection management (Connect-CMSite, Disconnect-CMSite,
+      - ConfigMgr site connection management (Connect-CMSite, Disconnect-CMSite,
         Test-CMConnection, Get-CMConnectionInfo)
       - Flat JSON settings persistence (Read-SuiteSettings, Save-SuiteSettings)
 
     Consumers never edit the vendored copy; changes flow through the
-    app-packager-suite repository and re-sync.
+    app-packager-suite repository and synchronize again.
 
 .EXAMPLE
     # Top of a consumer tool module (Module\<Tool>Common.psm1):
@@ -309,7 +309,7 @@ function Connect-CMSite {
         Disconnect-CMSite. Returns $true on success, $false on failure.
 
     .PARAMETER SMSProvider
-        SMS Provider machine. Optional: falls back to the SUITE_CM_PROVIDER
+        SMS Provider computer. Optional: falls back to the SUITE_CM_PROVIDER
         environment variable, then to an existing drive's root.
     #>
     param(
@@ -330,7 +330,7 @@ function Connect-CMSite {
         $resolved = if (-not [string]::IsNullOrWhiteSpace($CMModulePath)) { $CMModulePath } else { Resolve-ConfigurationManagerModulePath }
 
         if (-not $resolved -or -not (Test-Path -LiteralPath $resolved)) {
-            Write-Log "ConfigurationManager module not found. Ensure the CM console is installed." -Level ERROR
+            Write-Log "ConfigurationManager module not found. Make sure that the Configuration Manager console is installed." -Level ERROR
             return $false
         }
 
@@ -389,7 +389,7 @@ function Connect-CMSite {
 
     if (-not $siteDrive) {
         if ([string]::IsNullOrWhiteSpace($provider)) {
-            Write-Log "No CMSite drive '$SiteCode' exists and no SMS provider machine was given (parameter or SUITE_CM_PROVIDER)." -Level ERROR
+            Write-Log "No CMSite drive '$SiteCode' exists and no SMS Provider computer was given (parameter or SUITE_CM_PROVIDER)." -Level ERROR
             return $false
         }
 
@@ -422,7 +422,7 @@ function Connect-CMSite {
         }
     }
     else {
-        Write-Log "Connected to CM site: $SiteCode"
+        Write-Log "Connected to ConfigMgr site: $SiteCode"
     }
 
     if ([string]::IsNullOrWhiteSpace($provider)) {
@@ -464,13 +464,13 @@ function Disconnect-CMSite {
     $script:ConnectedSiteCode    = $null
     $script:ConnectedSMSProvider = $null
     $script:ConnectedAt          = $null
-    Write-Log "Disconnected from CM site"
+    Write-Log "Disconnected from ConfigMgr site"
 }
 
 function Test-CMConnection {
     <#
     .SYNOPSIS
-        Returns $true if currently connected to a CM site.
+        Returns $true if currently connected to a ConfigMgr site.
     #>
     if (-not $script:ConnectedSiteCode) { return $false }
 
@@ -506,10 +506,10 @@ function Get-CMConnectionInfo {
 function Test-CMSiteCodeMatchesProvider {
     <#
     .SYNOPSIS
-        Asks the SMS Provider which site code(s) it actually serves.
+        Asks the SMS Provider which site code(s) it serves.
 
     .DESCRIPTION
-        Queries root\sms:SMS_ProviderLocation on the provider machine. A
+        Queries root\sms:SMS_ProviderLocation on the SMS Provider computer. A
         CMSite PSDrive whose NAME does not match a real site code on its
         Root server connects fine, but every subsequent CM cmdlet fails
         with "Key cannot be null. Parameter name: key". Returns $null when
@@ -1753,7 +1753,7 @@ function Stop-SuiteBgWork {
         BeginStop, not Stop: a synchronous Stop() blocks the UI thread for
         as long as the pipeline is stuck inside a CM/CIM call against an
         unresponsive provider. The stopping pipeline is parked in the
-        graveyard and reaped on a later pass once it has actually stopped.
+        graveyard and reaped on a later pass once it has stopped.
         Returns the surviving graveyard; wrap the result in @() at the
         call site (an emptied graveyard returns nothing).
     #>
@@ -2894,8 +2894,8 @@ function Get-SuiteButtonStateReport {
         Samples the visible, enabled buttons (one per distinct style, at most -Max). For each state it reads the colors
         that the template shows: Text is the contrast of the button text on the button fill (the backdrop where the fill is
         transparent) and Edge is the larger contrast of the border or fill on the backdrop. The mouse is parked at the
-        bottom right corner of the screen, and the mouse button goes up while the pointer is off the button, so no click
-        happens. Hover, Pressed and Focused tell whether the state was reached. Needs the visible labadmin session.
+        bottom right corner of the screen, and the mouse button goes up while the pointer is off the button, so the pointer does not trigger
+        the button. Hover, Pressed and Focused tell whether the state was reached. Needs the visible labadmin session.
     #>
     [CmdletBinding()]
     param(

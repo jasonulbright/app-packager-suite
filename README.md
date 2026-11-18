@@ -28,10 +28,10 @@ installation, no gallery dependency.
 `SMS_ADMIN_UI_PATH` or known console install paths), creates the site
 PSDrive with `-Scope Global` so sibling modules can resolve the CMSite
 location, rebuilds a stale drive whose provider connection died, and
-verifies the site with `Get-CMSite` (skippable via
-`-SkipSiteVerification`). DEBUG console output enables via
+verifies the site with `Get-CMSite` (skip it with
+`-SkipSiteVerification`). DEBUG console output turns on with
 `Initialize-Logging -VerboseLogging` or the `SUITE_VERBOSE` environment
-variable; a provider machine can be supplied via parameter or
+variable; the SMS Provider computer can be set with a parameter or
 `SUITE_CM_PROVIDER`.
 
 ## Launcher
@@ -73,7 +73,7 @@ and `SuiteCommon`). Thirteen components ship:
 | Update Planner | `update-planner\` | `start-updateplanner.ps1` |
 | Device Inspector | `device-inspector\` | `start-deviceinspector.ps1` |
 
-Update Planner builds a wave plan for software update rollouts and can create the deployments behind an Enable actions switch. Device Inspector shows the facts of one device from the site and from the device in read-only panels. Both read the site with the ConfigurationManager cmdlets and need the Configuration Manager console on the computer.
+Update Planner builds a wave plan for software update rollouts and can create the deployments behind an Enable actions switch. Device Inspector shows one device in read-only panels. The panels show the operating system and the client health from the device. They show the discovery data, the hardware inventory, the collections, the deployments and the required software updates from the site. Both read the site with the ConfigurationManager cmdlets and need the Configuration Manager console on the computer.
 
 The component list lives in one table in
 `tools\build-suite-installer.ps1`. That table drives staging, the
@@ -95,7 +95,7 @@ What the installer does:
 - **Installs per user, with no elevation prompt.** Everything goes to
   `%LOCALAPPDATA%\AppPackagerSuite\`, one folder per component, and the
   Add/Remove Programs entry is written under `HKCU`. Nothing touches
-  `Program Files`, the machine registry, or another user's profile.
+  `Program Files`, the HKLM registry hive, or another user's profile.
 - **Checks for a newer suite release** once a day. The launcher shows an
   Update banner with Release notes and Update buttons; Update downloads
   the signed installer from the release, verifies its SHA-256 against
@@ -111,7 +111,7 @@ What the installer does:
   for each of the twelve tools and one for the launcher, which carries the
   suite icon. Each shortcut runs
   `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <entry>.ps1`,
-  so the tools start regardless of the machine's execution policy without
+  so the tools start regardless of the computer's execution policy without
   changing that policy for anything else.
 - **Writes `suite-manifest.json`** at the install root, recording the
   suite version and the version and commit of each bundled component.
@@ -172,7 +172,7 @@ if (-not (Get-Module SuiteCommon)) {
 ```
 
 Consumers never edit the vendored copy. Changes land in this repository
-and re-vendor via the sync script:
+and re-vendor with the sync script:
 
 ```powershell
 .\sync-suitecommon.ps1          # copy current core into consumers

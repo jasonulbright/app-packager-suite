@@ -2,10 +2,9 @@
 
 ## [Unreleased]
 
-### Tests
+### Installer
 
-- Add the ConfigMgr lexicon (`lexicon\configmgr-lexicon.json`) and a checker for the user-facing text, with a Pester guard in report-only mode.
-- Add the banned-names rule: names that the owner bans are matched in every tracked file, and the package format is reported separately.
+- Use ConfigMgr terms in the README and in the help and log messages of the shared library.
 
 ## [2026.11.18.0090] - 2026-11-18
 
