@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "configmgr-lexicon",
-  "version": "2026.11.18.3",
+  "version": "2026.11.18.4",
   "updated": "2026-11-18",
   "description": "Vocabulary and flagged phrases for user-facing text about Microsoft Configuration Manager. Terms and rules only, no Microsoft text. Every entry cites a Microsoft Learn URL or a code reference.",
   "fields": {
@@ -616,6 +616,32 @@
       "status": "unverified",
       "severity": "info",
       "notes": "Owner decision: the footer D-05 names the primary site server. Counted for the audit only."
+    },
+    {
+      "id": "LX-034",
+      "category": "site-role",
+      "scope": "text",
+      "kind": "flag",
+      "preferred": [
+        "SMS Provider computer name",
+        "FQDN of the SMS Provider computer"
+      ],
+      "flagged": [
+        "\\bsite server (?:FQDN|name|field|box|address|computer name)\\b",
+        "\\b(?:FQDN|name|address) of the site server\\b"
+      ],
+      "allowWhen": [
+        "\\bprimary site server\\b"
+      ],
+      "context": "Where the field holds the name of the SMS Provider computer. The footer text 'primary site server' (decision D-05) stays.",
+      "replacement": "SMS Provider computer name, or FQDN of the SMS Provider computer. Write site server only for the computer that runs the site.",
+      "source": [
+        "https://learn.microsoft.com/intune/configmgr/develop/core/understand/sqlviews/sms-provider-wmi-schema-reference-configuration-manager",
+        "vault decision D-33 of app-packager-suite (owner default O-6)"
+      ],
+      "status": "unverified",
+      "severity": "warning",
+      "notes": "Added after reviewers found 'site server FQDN' in catalog and window text that the checker missed. The SMS Provider can run on a computer other than the site server."
     },
     {
       "id": "LX-022",
