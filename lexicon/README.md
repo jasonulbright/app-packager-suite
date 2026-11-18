@@ -1,6 +1,6 @@
 # ConfigMgr lexicon
 
-A data file and a checker for the user-facing text of the suite and of APD. The text must use the vocabulary of Configuration Manager and the voice of Microsoft Learn.
+A data file and a checker for the user-facing text of the suite and of APD. The canonical data files are in the vault (`wiki/concepts/configmgr-lexicon/`); this folder is a vendored copy of them plus the engine. Run `sync-lexicon.ps1` in the suite root to refresh this copy from the vault and to vendor it into the other repositories. The text must use the vocabulary of Configuration Manager and the voice of Microsoft Learn.
 
 The lexicon holds terms, rules and citations. It holds no text copied from Microsoft Learn.
 
@@ -61,7 +61,7 @@ Invoke-Pester -Path .\Tests\Lexicon.Guard.Tests.ps1
 
 ## Vendor it into another repository
 
-Copy the `lexicon` folder to `Lib\Lexicon` in the repository and copy `Tests\Lexicon.Guard.Tests.ps1` to its `Tests` folder. The guard finds `lexicon` or `Lib\Lexicon`. A vendored copy without `enforce.marker` reports only. Add `enforce.marker` in the fix pull request that clears the hits of that repository.
+Run `sync-lexicon.ps1` (it copies the `lexicon` folder to `Lib\Lexicon` in each repository, and `Tests\Lexicon.Guard.Tests.ps1` to its `Tests` folder; `-Check` reports drift). The guard finds `lexicon` or `Lib\Lexicon`. A vendored copy without `enforce.marker` reports only. Add `enforce.marker` in the fix pull request that clears the hits of that repository.
 
 ## Banned names
 
