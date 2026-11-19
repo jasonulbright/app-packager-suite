@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [2026.11.18.0093] - 2026-11-18
+
+## 1 component refreshed with cancel and checked downloads
+
+### Installer
+
+- Carry app-packager 2026.11.18.0146.
+- Cancel works in every App Packager run.
+- Add the targets IntuneAndWSUS and ConfigMgrAndIntuneAndWSUS to App Packager.
+- Check the signature and the digest of the files that App Packager downloads.
+
 ## [2026.11.18.0092] - 2026-11-18
 
 ## 1 component refreshed with the App Installer packager and fixes
