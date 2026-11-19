@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [2026.11.19.0094] - 2026-11-19
+
+## 1 component refreshed with cancel fixes and a new packager
+
+### Installer
+
+- Carry app-packager 2026.11.19.0147.
+- Add the PowerShell 7 (MSIX) packager to App Packager.
+- Cancel in App Packager ends with one cancelled line. A cancelled run no longer says it finished.
+- Add a Cancel button to the One Click dialog of App Packager.
+
 ## [2026.11.18.0093] - 2026-11-18
 
 ## 1 component refreshed with cancel and checked downloads
