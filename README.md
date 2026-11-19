@@ -46,10 +46,10 @@ connection profile - site code and SMS provider - is entered once and
 handed to each launch through the `SUITE_CM_PROVIDER` /
 `SUITE_CM_SITECODE` environment variables; `Connect-CMSite` falls back
 to the provider variable, so tools connect without per-tool
-configuration. The footer shows the saved site code and site server as
-text: the site code with "Site", a middle dot, then the site server (for example "Site MCM", middle dot, "cm01.contoso.com"). The two boxes at the top
-of the launcher window are the place to edit them. The launcher embeds no
-tools and hosts no plugins.
+configuration. The two boxes at the top of the launcher window are the
+place to edit them. The footer shows the status text and the Check for
+updates button; a long status text ends in an ellipsis, and its tooltip
+shows the whole text. The launcher embeds no tools and hosts no plugins.
 
 ## All-in-one installer
 

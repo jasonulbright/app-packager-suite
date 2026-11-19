@@ -184,9 +184,9 @@ $mainXaml = @'
 
         <Border Grid.Row="3" Padding="14,6,14,6" Background="{DynamicResource MahApps.Brushes.Gray10}">
             <DockPanel>
-                <Button x:Name="btnCheckUpdates" DockPanel.Dock="Right" Content="Check for updates" Height="24" Padding="8,0"
+                <Button x:Name="btnCheckUpdates" DockPanel.Dock="Right" Content="Check for updates" Height="24" Padding="8,0" Margin="12,0,0,0"
                         Style="{DynamicResource MahApps.Styles.Button.Square}" Controls:ControlsHelper.ContentCharacterCasing="Normal"/>
-                <TextBlock x:Name="txtStatus" Text="Ready." VerticalAlignment="Center"/>
+                <TextBlock x:Name="txtStatus" Text="Ready." VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
             </DockPanel>
         </Border>
     </Grid>
@@ -212,7 +212,19 @@ function Set-SuiteStatus {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Updates an in-window TextBlock only.')]
     param([Parameter(Mandatory)][string]$Text)
     $txtStatus.Text = $Text
+    # A long text ends in an ellipsis before the button; the tooltip shows all of it.
+    $txtStatus.ToolTip = $Text
 }
+
+# The footer shows the status text only. The two boxes at the top of the window
+# are the place to edit the site code and the site server. The status text
+# takes the shared footer style, the same in light and dark.
+$footerStyle = Get-SuiteFooterStyle
+$txtStatus.FontFamily = New-Object System.Windows.Media.FontFamily($footerStyle.FontFamily)
+$txtStatus.FontSize   = [double]$footerStyle.FontSize
+$txtStatus.FontWeight = [System.Windows.FontWeights]::($footerStyle.FontWeight)
+$txtStatus.FontStyle  = [System.Windows.FontStyles]::($footerStyle.FontStyle)
+$txtStatus.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, $footerStyle.Foreground)
 
 Install-TitleBarDragFallback -Window $window
 
@@ -253,26 +265,11 @@ Initialize-SuiteTheme -Window $window `
 $txtSiteCode.Text = [string]$global:Prefs['SiteCode']
 $txtProvider.Text = [string]$global:Prefs['SMSProvider']
 
-# The footer is read-only text. The two boxes above stay the place to edit the
-# site code and the site server in this window.
-function Sync-SuiteFooter {
-    try {
-        if (-not $script:FooterReady) {
-            [void](Initialize-SuiteFooter -Window $window -StatusName 'txtStatus')
-            $script:FooterReady = $true
-        }
-        Update-SuiteFooter -Window $window -SiteCode ([string]$global:Prefs['SiteCode']) -SiteServer ([string]$global:Prefs['SMSProvider'])
-    } catch {
-        $txtStatus.Text = 'The footer failed.'
-    }
-}
-
 $btnSaveProfile.Add_Click({
     $global:Prefs['SiteCode']    = ([string]$txtSiteCode.Text).Trim()
     $global:Prefs['SMSProvider'] = ([string]$txtProvider.Text).Trim()
     $result = Save-LauncherSettings -Subject 'Connection profile'
     Set-LaunchEnvironment
-    Sync-SuiteFooter
     if ($result.Saved) {
         Set-SuiteStatus 'Connection profile saved; new launches inherit it.'
         return
@@ -410,7 +407,6 @@ $window.Add_Loaded({
     }
     Set-ButtonTheme
     Update-TitleBarBrushes
-    Sync-SuiteFooter
     Set-SuiteStatus ('{0} tool(s) found under {1}. Site profile is handed to every launch.' -f $script:Tools.Count, (Get-SuiteToolsRoot))
     Start-SuiteUpdateCheck
 })
