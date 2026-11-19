@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Launcher
+
+- Remove the site code and the site server from the footer of the launcher. The two boxes at the top of the window show them.
+- Leave a gap of 12 pixels between the status text and the Check for updates button. A long status text ends in an ellipsis, and its tooltip shows the whole text.
+
 ## [2026.11.19.0094] - 2026-11-19
 
 ## 1 component refreshed with cancel fixes and a new packager
