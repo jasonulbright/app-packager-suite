@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- The lexicon checker now reads the Description of module manifests. It missed one manifest with a banned word.
+
 ### Launcher
 
 - Remove the site code and the site server from the footer of the launcher. The two boxes at the top of the window show them.
