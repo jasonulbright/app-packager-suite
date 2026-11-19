@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- The lexicon checker now reads the Description of module manifests. It missed a manifest that said facts.
+- The lexicon checker now reads the Description of module manifests. It missed one manifest with a banned word.
 
 ### Launcher
 
