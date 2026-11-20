@@ -2,14 +2,27 @@
 
 ## [Unreleased]
 
-### Fixed
+## [2026.11.20.0095] - 2026-11-20
 
-- The lexicon checker now reads the Description of module manifests. It missed one manifest with a banned word.
+## 12 components refreshed
+
+### Installer
+
+- Carry app-packager 2026.11.20.0148 and site-hygiene 2026.11.20.0041.
+- Carry collection-and-compliance-manager 2026.11.20.0029 and collection-manager 2026.11.20.0032.
+- Carry deployment-helper 2026.11.20.0029 and detection-tester 2026.11.20.0026.
+- Carry dp-content-manager 2026.11.20.0025 and installer-analysis 2026.11.20.0031.
+- Carry maintenance-window-manager 2026.11.20.0026 and pivots-and-scripts 2026.11.20.0018.
+- Carry update-planner 2026.11.20.0015 and device-inspector 2026.11.20.0019.
 
 ### Launcher
 
-- Remove the site code and the site server from the footer of the launcher. The two boxes at the top of the window show them.
-- Leave a gap of 12 pixels between the status text and the Check for updates button. A long status text ends in an ellipsis, and its tooltip shows the whole text.
+- Remove the site code and the site server from the footer of the launcher.
+- Leave a gap between the status text and the Check for updates button.
+
+### Fixed
+
+- Fix the lexicon checker to read the Description of module manifests.
 
 ## [2026.11.19.0094] - 2026-11-19
 
