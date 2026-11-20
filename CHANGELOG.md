@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [2026.11.20.0098] - 2026-11-20
+
+## 1 component refreshed
+
+### Installer
+
+- Carry app-packager 2026.11.20.0151 with guide images retaken with icons.
+
 ## [2026.11.20.0097] - 2026-11-20
 
 ## 1 component refreshed
