@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [2026.11.20.0096] - 2026-11-20
+
+## 3 components refreshed
+
+### Installer
+
+- Carry app-packager 2026.11.20.0149 with tooltips.
+- Carry site-hygiene 2026.11.20.0042 with the APP-07 fix for retired applications.
+- Carry pivots-and-scripts 2026.11.20.0019 with tooltips.
+
 ## [2026.11.20.0095] - 2026-11-20
 
 ## 12 components refreshed
