@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [2026.11.20.0097] - 2026-11-20
+
+## 1 component refreshed
+
+### Installer
+
+- Carry app-packager 2026.11.20.0150 without the blinking grid icons.
+- Cut the processor use of the busy spinner in app-packager.
+
 ## [2026.11.20.0096] - 2026-11-20
 
 ## 3 components refreshed
