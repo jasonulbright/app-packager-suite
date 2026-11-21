@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [2026.11.20.0101] - 2026-11-20
+
+## 1 component refreshed
+
+### Installer
+
+- Carry app-packager 2026.11.20.0154 with the grid steps in the default guide capture.
+
 ## [2026.11.20.0100] - 2026-11-20
 
 ## 1 component refreshed
