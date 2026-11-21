@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [2026.11.21.0106] - 2026-11-21
+
+## 1 component refreshed
+
+### Installer
+
+- Carry app-packager 2026.11.21.0158 with six more columns in the All Applications grid.
+
 ## [2026.11.21.0105] - 2026-11-21
 
 ## 1 component refreshed
