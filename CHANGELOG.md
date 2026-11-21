@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [2026.11.20.0100] - 2026-11-20
+
+## 1 component refreshed
+
+### Installer
+
+- Carry app-packager 2026.11.20.0153 with the All Applications grid in Options.
+
 ## [2026.11.20.0099] - 2026-11-20
 
 ## 1 component refreshed
