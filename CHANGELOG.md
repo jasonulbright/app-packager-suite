@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [2026.11.21.0105] - 2026-11-21
+
+## 1 component refreshed
+
+### Installer
+
+- Carry deployment-helper 2026.11.21.0030 with the Update Rollout view.
+
 ## [2026.11.21.0104] - 2026-11-21
 
 ## 1 component refreshed
