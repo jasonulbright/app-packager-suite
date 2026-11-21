@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [2026.11.20.0099] - 2026-11-20
+
+## 1 component refreshed
+
+### Installer
+
+- Carry app-packager 2026.11.20.0152 with one GitHub sign-in status in Options.
+
 ## [2026.11.20.0098] - 2026-11-20
 
 ## 1 component refreshed
