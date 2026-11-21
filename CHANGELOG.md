@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [2026.11.21.0104] - 2026-11-21
+
+## 1 component refreshed
+
+### Installer
+
+- Carry app-packager 2026.11.21.0157 with the Check ConfigMgr result files.
+
 ## [2026.11.21.0103] - 2026-11-21
 
 ## 1 component refreshed
