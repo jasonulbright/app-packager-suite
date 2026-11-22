@@ -65,10 +65,11 @@ VIAddVersionKey "LegalCopyright"  "MIT"
 !define MUI_ABORTWARNING
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
-!insertmacro MUI_UNPAGE_CONFIRM
 ; A custom page asks whether to delete the user data. Silent uninstall skips it,
-; so /S never deletes data.
+; so /S never deletes data. It comes before the confirm page, so the button that
+; starts the uninstall is the last choice.
 UninstPage custom un.DataPageShow un.DataPageLeave
+!insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "English"
 
