@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [2026.11.22.0107] - 2026-11-22
+
+## 3 components refreshed
+
+### Installer
+
+- Carry app-packager 2026.11.22.0159 with the Installer Type column and retaken guide images.
+- Carry collection-manager 2026.11.21.0033 with the rules of a collection shown again.
+- Carry collection-and-compliance-manager 2026.11.21.0030 with the rules of a collection shown again.
+
 ## [2026.11.21.0106] - 2026-11-21
 
 ## 1 component refreshed
