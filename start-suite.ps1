@@ -30,7 +30,8 @@ $global:Prefs = Read-SuiteSettings -Path $script:SettingsPath -Defaults @{
 # The site. SiteCode and SMSProvider in suite.settings.json are the old single-site values: they stay in the file for one
 # release and are only read here, as a last source. The site comes from active-site.json (or the environment), and the
 # first start after an update copies the old values into the site folder (Resolve-SuiteToolSite, once).
-$script:LauncherSite = Resolve-SuiteToolSite -Tool 'app-packager-suite' -ToolRoot $PSScriptRoot -LegacyPrefsPath $script:SettingsPath
+# The launcher reads the file, never the environment: it sets the environment itself for the tools it starts.
+$script:LauncherSite = Resolve-SuiteToolSite -Tool 'app-packager-suite' -ToolRoot $PSScriptRoot -LegacyPrefsPath $script:SettingsPath -IgnoreEnvironment
 if ($script:LauncherSite.Active -and -not (Get-SuiteActiveSite -IgnoreEnvironment)) {
     [void](Set-SuiteActiveSite -SiteCode $script:LauncherSite.SiteFolder)
 }
@@ -131,6 +132,15 @@ function Save-LauncherSite {
     $parsed = ConvertFrom-SuiteSiteFolderName -Name ([string]$SiteText).Trim()
     if (-not $parsed) {
         return [pscustomobject]@{ Saved = $false; Folder = ''; Message = 'Site not saved: the site code must be three letters or digits, for example AB1. AUX, CON, ENV, NUL, PRN and SMS are reserved.' }
+    }
+    # A provider belongs to one site. A new site with the provider of another site is a leftover in the box.
+    $typed = ([string]$Provider).Trim()
+    $known = @(Get-SuiteSiteList)
+    if ($typed -and -not ($known | Where-Object { $_.FolderName -ceq $parsed.FolderName })) {
+        $owner = @($known | Where-Object { $_.Providers -contains $typed } | Select-Object -First 1)
+        if ($owner.Count -gt 0) {
+            return [pscustomobject]@{ Saved = $false; Folder = ''; Message = ('Site not saved: the SMS Provider {0} belongs to site {1}. Enter the SMS Provider of the new site {2}.' -f $typed, $owner[0].FolderName, $parsed.FolderName) }
+        }
     }
     $folder = Set-SuiteSiteIdentity -SiteCode $parsed.FolderName -Provider $Provider
     if (-not $folder) {
@@ -322,7 +332,6 @@ function Update-SiteChoices {
 if ($script:LauncherSite.Active) {
     Update-SiteChoices -Select $script:LauncherSite.SiteFolder
     $txtProvider.Text = [string]$script:LauncherSite.Provider
-    if (-not $txtProvider.Text) { $txtProvider.Text = [string]$global:Prefs['SMSProvider'] }
 }
 else {
     Update-SiteChoices -Select ([string]$global:Prefs['SiteCode'])
@@ -334,14 +343,14 @@ $cmbSite.Add_SelectionChanged({
     $picked = [string]$cmbSite.SelectedItem
     if (-not $picked) { return }
     $known = @(Get-SuiteSiteList | Where-Object { $_.FolderName -ceq $picked }) | Select-Object -First 1
-    if ($known -and $known.Providers.Count -gt 0) { $txtProvider.Text = [string]$known.Providers[0] }
+    if ($known -and $known.Providers.Count -gt 0) { $txtProvider.Text = [string]$known.Providers[0] } else { $txtProvider.Text = '' }
 })
 
 $btnSaveProfile.Add_Click({
     $previous = [string]$script:LauncherSite.SiteFolder
     $result = Save-LauncherSite -SiteText $cmbSite.Text -Provider $txtProvider.Text
     if ($result.Saved) {
-        $script:LauncherSite = Resolve-SuiteToolSite -Tool 'app-packager-suite' -ToolRoot $PSScriptRoot -LegacyPrefsPath $script:SettingsPath -NoMigration
+        $script:LauncherSite = Resolve-SuiteToolSite -Tool 'app-packager-suite' -ToolRoot $PSScriptRoot -LegacyPrefsPath $script:SettingsPath -NoMigration -IgnoreEnvironment
         Set-LaunchEnvironment
         Update-SiteChoices -Select $result.Folder
         $note = ' Tools you start next use it.'

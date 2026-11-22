@@ -898,6 +898,7 @@ function Set-SuiteSiteIdentity {
     $folder = Get-SuiteSiteFolder -SiteCode $parsed.FolderName -DataRoot $DataRoot
     $path = Join-Path $folder 'site.json'
     $existing = Read-SuiteMigrationJson -Path $path
+    if (-not $existing -and (Test-Path -LiteralPath $path)) { return $null }
     $providers = New-Object System.Collections.Generic.List[string]
     $created = $now
     $migratedFrom = ''
@@ -971,7 +972,8 @@ function Resolve-SuiteToolSite {
         [string]$DataRoot,
         [string]$LocalRoot,
         [string]$SuiteRoot,
-        [switch]$NoMigration
+        [switch]$NoMigration,
+        [switch]$IgnoreEnvironment
     )
     $none = [pscustomobject]@{ Active = $false; Tool = $Tool; SiteFolder = ''; SiteCode = ''; Provider = ''; Source = ''; SiteRoot = ''; ToolFolder = ''; DataRoot = ''; Migration = ''; Reason = '' }
     try {
@@ -979,7 +981,7 @@ function Resolve-SuiteToolSite {
         if (-not $SuiteRoot) { $SuiteRoot = Split-Path -Path $ToolRoot.TrimEnd('\', '/') -Parent }
         $source = ''
         $folderName = ''
-        $active = Get-SuiteActiveSite -DataRoot $DataRoot
+        $active = Get-SuiteActiveSite -DataRoot $DataRoot -IgnoreEnvironment:$IgnoreEnvironment
         if ($active) { $folderName = $active.SiteCode; $source = $active.Source }
         elseif ($LegacyPrefsPath) {
             $p = Read-SuiteMigrationJson -Path $LegacyPrefsPath
@@ -997,9 +999,27 @@ function Resolve-SuiteToolSite {
         else {
             $args2 = @{ SuiteRoot = $SuiteRoot; DataRoot = $DataRoot; SiteCode = $parsed.SiteCode; Tool = $Tool }
             if ($LocalRoot) { $args2['LocalRoot'] = $LocalRoot }
-            $report = Invoke-SuiteSiteMigration @args2
+            # Several tools can start together. One copy runs at a time per data root.
+            $mutexName = 'Global\AppPackagerSuiteSiteMigration-' + [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($DataRoot.ToLowerInvariant()))).Replace('-', '').Substring(0, 24)
+            $mutex = New-Object System.Threading.Mutex($false, $mutexName)
+            $held = $false
+            try {
+                try { $held = $mutex.WaitOne([TimeSpan]::FromSeconds(60)) } catch [System.Threading.AbandonedMutexException] { $held = $true }
+                if (-not $held) { $none.Reason = 'Another start is copying the old data. This tool uses its old data location for this session.'; return $none }
+                if (Test-Path -LiteralPath $marker -PathType Leaf) { $report = [pscustomobject]@{ Outcome = 'done earlier'; Items = @() } }
+                else {
+                    try { $report = Invoke-SuiteSiteMigration @args2 }
+                    catch { $report = [pscustomobject]@{ Outcome = 'Failed'; Items = @(); Error = $_.Exception.Message } }
+                }
+            }
+            finally { if ($held) { $mutex.ReleaseMutex() }; $mutex.Dispose() }
             $migration = [string]$report.Outcome
-            if ($report.Outcome -ne 'Failed' -and $report.Outcome -ne 'NothingMigrated') {
+            if ($report.Outcome -eq 'Failed') {
+                $none.Migration = 'Failed'
+                $none.Reason = 'The copy of the old data into the site folder failed. This tool uses its old data location for this session. ' + [string]$report.Error
+                return $none
+            }
+            if ($report.Outcome -ne 'done earlier' -and $report.Outcome -ne 'NothingMigrated') {
                 $copied = @($report.Items | Where-Object { $_.Status -eq 'Copied' }).Count
                 $node = [ordered]@{ schemaVersion = 1; tool = $Tool; siteCode = $parsed.FolderName; outcome = $report.Outcome; copiedItems = $copied; doneUtc = [datetime]::UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", [Globalization.CultureInfo]::InvariantCulture) }
                 [void](Write-SuiteSiteJsonFile -Path $marker -Object $node)
@@ -1146,7 +1166,7 @@ function Set-SuiteFooterNote {
     $site.Tag = $state
     $sep = [string][char]0x00B7
     if ($state['Note']) { $site.Text = ('{0} {1} {2}' -f $state['Base'], $sep, $state['Note']); $site.ToolTip = $state['Note'] }
-    else { $site.Text = [string]$state['Base'] }
+    else { $site.Text = [string]$state['Base']; $site.ToolTip = $null }
 }
 
 function Start-SuiteSiteWatch {
@@ -3730,7 +3750,7 @@ function Write-SuiteMigrationMarker {
     }
     $bytes = ConvertTo-SuiteMigrationJsonBytes -Object $node
     if (-not (Test-Path -LiteralPath $SiteFolder)) { [void](New-Item -ItemType Directory -Path $SiteFolder -Force) }
-    $tmp = $path + '.tmp'
+    $tmp = $path + '.' + [guid]::NewGuid().ToString('N') + '.tmp'
     [IO.File]::WriteAllBytes($tmp, $bytes)
     Move-Item -LiteralPath $tmp -Destination $path -Force
 }

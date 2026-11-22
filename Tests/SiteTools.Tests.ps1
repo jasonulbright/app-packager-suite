@@ -108,6 +108,14 @@ Context 'Site list, identity and active site' {
         $f.Source | Should -Be 'active-site.json'
     }
 
+    It 'keeps a site.json that exists but cannot be read' {
+        $dir = Join-Path $script:Data 'sites\AB1'
+        [void](New-Item -ItemType Directory -Path $dir -Force)
+        [IO.File]::WriteAllText((Join-Path $dir 'site.json'), '{ not json')
+        (Set-SuiteSiteIdentity -SiteCode 'AB1' -Provider 'cm01.example.com' -DataRoot $script:Data) | Should -BeNullOrEmpty
+        (Get-Content (Join-Path $dir 'site.json') -Raw) | Should -Be '{ not json'
+    }
+
     It 'ignores folders that are not valid site names' {
         [void](New-Item -ItemType Directory -Path (Join-Path $script:Data 'sites\notasite'), (Join-Path $script:Data 'sites\ab1') -Force)
         [void](Set-SuiteSiteIdentity -SiteCode 'EF3' -DataRoot $script:Data)
@@ -177,6 +185,50 @@ Context 'Resolve-SuiteToolSite' {
         $r.Active | Should -BeTrue
         $r.SiteFolder | Should -Be 'CD2'
         $r.Source | Should -Be 'prefs'
+    }
+
+    It 'falls back to the old paths for this session when the copy fails, and writes no marker' {
+        $t = New-OldHygiene -Suite $script:Suite
+        Set-Active -DataRoot $script:Data -Folder 'AB1'
+        # A file where the site folder must be: the copy cannot write site.json.
+        [void](New-Item -ItemType Directory -Path (Join-Path $script:Data 'sites') -Force)
+        [IO.File]::WriteAllText((Join-Path $script:Data 'sites\AB1'), 'not a folder')
+        $before = Get-TreeHash $script:Suite
+        $r = Resolve-SuiteToolSite -Tool 'site-hygiene' -ToolRoot $t -DataRoot $script:Data -LocalRoot $script:Local
+        $r.Active | Should -BeFalse
+        $r.Migration | Should -Be 'Failed'
+        $r.Reason | Should -Match 'old data location'
+        Assert-NoChange -Before $before -After (Get-TreeHash $script:Suite)
+    }
+
+    It 'the file-only read ignores a stale environment, so a second switch in the launcher takes effect' {
+        $t = New-OldHygiene -Suite $script:Suite
+        [void](Set-SuiteSiteIdentity -SiteCode 'AB1' -Provider 'cm01.example.com' -DataRoot $script:Data)
+        [void](Set-SuiteSiteIdentity -SiteCode 'CD2' -Provider 'cm02.example.com' -DataRoot $script:Data)
+        Set-Active -DataRoot $script:Data -Folder 'AB1'
+        $env:SUITE_CM_SITECODE = 'AB1'; $env:APP_PACKAGER_SITE = 'AB1'
+        Set-Active -DataRoot $script:Data -Folder 'CD2'
+        (Resolve-SuiteToolSite -Tool 'site-hygiene' -ToolRoot $t -DataRoot $script:Data -LocalRoot $script:Local -NoMigration).SiteFolder | Should -Be 'AB1'
+        $r = Resolve-SuiteToolSite -Tool 'site-hygiene' -ToolRoot $t -DataRoot $script:Data -LocalRoot $script:Local -NoMigration -IgnoreEnvironment
+        $r.SiteFolder | Should -Be 'CD2'
+        $r.Provider | Should -Be 'cm02.example.com'
+    }
+
+    It 'starts of several tools together copy each tool once and keep every journal entry' {
+        $hy = New-OldHygiene -Suite $script:Suite
+        Write-Seed $script:Suite 'device-inspector\DeviceInspector.prefs.json' '{"SiteCode":"AB1","SMSProvider":"cm01.example.com"}'
+        Write-Seed $script:Suite 'device-inspector\Reports\di-1.html' '<html>di</html>'
+        $di = Join-Path $script:Suite 'device-inspector'
+        Set-Active -DataRoot $script:Data -Folder 'AB1'
+        $a = Resolve-SuiteToolSite -Tool 'site-hygiene' -ToolRoot $hy -DataRoot $script:Data -LocalRoot $script:Local
+        $b = Resolve-SuiteToolSite -Tool 'device-inspector' -ToolRoot $di -DataRoot $script:Data -LocalRoot $script:Local
+        $a.Migration | Should -Be 'Migrated'
+        $b.Migration | Should -Be 'Migrated'
+        $journal = Get-Content (Join-Path $script:Data 'sites\AB1\migration.json') -Raw | ConvertFrom-Json
+        $ids = @($journal.items | ForEach-Object id) | Sort-Object -Unique
+        $ids | Should -Contain 'suite.site-hygiene'
+        $ids | Should -Contain 'suite.device-inspector'
+        @(Get-ChildItem (Join-Path $script:Data 'sites\AB1') -Recurse -File -Filter '*.tmp').Count | Should -Be 0
     }
 
     It 'does not copy old data of another site into the active site folder' {
@@ -366,6 +418,32 @@ Context 'Launcher site helpers' {
         Test-Path (Join-Path (Get-SuiteDataRoot) 'active-site.json') | Should -BeFalse
     }
 
+    It 'switches twice: the second Save takes effect even after the environment was set for a tool' {
+        $global:Prefs = @{ SiteCode = ''; SMSProvider = '' }
+        $script:SettingsPath = Join-Path $script:Temp 'suite.settings.json'
+        $script:LauncherSite = [pscustomobject]@{ Active = $false; SiteFolder = ''; SiteCode = ''; Provider = '' }
+        (Save-LauncherSite -SiteText 'AB1' -Provider 'cm01.example.com').Saved | Should -BeTrue
+        $script:LauncherSite = Resolve-SuiteToolSite -Tool 'app-packager-suite' -ToolRoot (Join-Path $script:Suite 'app-packager-suite') -LegacyPrefsPath $script:SettingsPath -NoMigration -IgnoreEnvironment
+        Set-LaunchEnvironment
+        $env:SUITE_CM_SITECODE | Should -Be 'AB1'
+        (Save-LauncherSite -SiteText 'CD2' -Provider 'cm02.example.com').Saved | Should -BeTrue
+        $script:LauncherSite = Resolve-SuiteToolSite -Tool 'app-packager-suite' -ToolRoot (Join-Path $script:Suite 'app-packager-suite') -LegacyPrefsPath $script:SettingsPath -NoMigration -IgnoreEnvironment
+        $script:LauncherSite.SiteFolder | Should -Be 'CD2'
+        Set-LaunchEnvironment
+        $env:SUITE_CM_SITECODE | Should -Be 'CD2'
+        $env:SUITE_CM_PROVIDER | Should -Be 'cm02.example.com'
+    }
+
+    It 'refuses a new site that carries the provider of another site' {
+        (Save-LauncherSite -SiteText 'AB1' -Provider 'cm01.example.com').Saved | Should -BeTrue
+        $r = Save-LauncherSite -SiteText 'CD2' -Provider 'cm01.example.com'
+        $r.Saved | Should -BeFalse
+        $r.Message | Should -Match 'belongs to site AB1'
+        Test-Path (Join-Path (Get-SuiteDataRoot) 'sites\CD2') | Should -BeFalse
+        (Save-LauncherSite -SiteText 'CD2' -Provider '').Saved | Should -BeTrue
+        (Save-LauncherSite -SiteText 'AB1' -Provider 'cm01.example.com').Saved | Should -BeTrue
+    }
+
     It 'sets the environment of a started tool from the active site' {
         $global:Prefs = @{ SiteCode = 'OLD'; SMSProvider = 'old.example.com' }
         $script:LauncherSite = [pscustomobject]@{ Active = $true; SiteFolder = 'CD2'; SiteCode = 'CD2'; Provider = 'cm02.example.com' }
@@ -401,8 +479,10 @@ Context 'Footer note' {
         $tb.Text | Should -Match 'The launcher now uses site CD2\.$'
         Update-SuiteFooter -Window $win -SiteCode 'AB1' -SiteServer 'cm01.example.com'
         $tb.Text | Should -Match 'cm01\.example\.com .* The launcher now uses site CD2\.$'
+        $tb.ToolTip | Should -Match 'launcher'
         Set-SuiteFooterNote -Window $win -Text ''
         $tb.Text | Should -Not -Match 'launcher'
+        $tb.ToolTip | Should -BeNullOrEmpty
     }
 }
 }
