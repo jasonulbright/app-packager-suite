@@ -36,6 +36,8 @@
         'Get-SuiteDataRoot'
         'Get-SuiteSiteFolder'
         'Get-SuiteActiveSite'
+        'Invoke-SuiteSiteMigration'
+        'Format-SuiteSiteMigrationReport'
 
         # Window chrome
         'Get-TitleBarDragHeight'
