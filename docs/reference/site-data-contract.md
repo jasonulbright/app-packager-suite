@@ -1,6 +1,6 @@
 # Site data contract
 
-Status: contract schemaVersion 1. No app reads or writes these locations yet. This page defines them so that App Packager Desktop (APD), the PowerShell app and the suite tools use one layout. The migration and the switcher follow in later work items (Q-112c and later).
+Status: contract schemaVersion 1. No app reads these locations yet. This page defines them so that App Packager Desktop (APD), the PowerShell app and the suite tools use one layout. The migration (Q-112c, section Migration below) copies old data into them by a function call. The switcher follows in later work items (Q-112d and later).
 
 ## Files of the contract
 
@@ -50,6 +50,7 @@ Rules:
       handoff\ring-plan.json
       tools\<tool>\         site-scoped prefs and data of a suite tool
       imported-from.json
+      migration.json        marker of the migration (Q-112c)
 ```
 
 Global data stays where it is today. The migration moves no global file.
@@ -117,3 +118,26 @@ Rules that the tests check:
 ## Names, not IDs
 
 An import copies names (DP group, test collection, update waves, ring plan collection names). It never copies a site-assigned ID (collection ID, package ID, object ID). After the next connect, the app lists each name that the target site does not have and clears nothing.
+
+## Migration of single-site data (Q-112c)
+
+Code: `Invoke-SuiteSiteMigration` and `Format-SuiteSiteMigrationReport` in `SuiteCommon` (the PowerShell app and the suite tools). The C# twin is `SiteDataMigration` in `ApplicationPackagerEngine/Services` (APD). A function call starts each of them. No start-up code calls them. No store reads the new paths before Q-112d.
+
+Rules:
+
+- Copy, never move. The old files stay in place and keep their content for at least one release. A later cleanup is a separate step with the owner's approval.
+- A copy counts only when its SHA-256 equals the source. A copy that does not match stops the run. The old files stay in use.
+- Site items go to `sites\<SITE>\` for the site code that is configured now. Global items stay where they are. A secret is never copied. The copy of a settings file keeps only the keys that the scope manifest lists, and it drops any property whose name contains token, secret, password, apikey, credential, protected or webhook.
+- A source that names another site (its own `SiteCode` differs) is not copied into this site folder. The report says so. A run with `-SiteCode` for that site copies it.
+- No site code is configured (APD: `SiteCodeSaved` is not true, or the code is invalid; suite: no code in `suite.settings.json` or `AppPackager.preferences.json`, and none given): nothing is migrated, nothing is created, and the report says why.
+- Idempotent. A second run changes nothing and reports `NothingChanged`.
+- Resumable. A copy goes to `<file>.migrating`, is checked, then renamed. A crash leaves no partial file at the destination. `migration.json` is the journal: it lists each copied file with its source and SHA-256, is written after each copy, and changes only when its list changes. Both apps write the same marker and keep each other's entries.
+- A destination with other content is kept and reported (`Conflict`). `SourceChanged` means the destination is what an earlier run of the same source wrote, and the source changed since. Neither status writes anything.
+- A JSON file that two apps share (`settings.json`, `statepp-state.json`) is merged by top-level key: a key that is absent is added, an equal key is accepted, a different value is a conflict and nothing is written.
+- Two apps that write the same results file (`results\CheckConfigMgrResult.csv` from APD and from the PowerShell app) conflict when the content differs. The first copy stays. Q-112d decides how the two share it.
+- A dry run (`Plan` in C#, `-DryRun` in PowerShell) lists each item with scope, source, destination, SHA-256 and status. It writes nothing and creates no folder.
+- `history.db` of APD is copied as a whole file and is blocked while a `-wal` or `-journal` file is not empty. The split of its rows by site is part of Q-112d.
+
+Statuses: `Planned`, `Copied`, `AlreadyDone`, `Conflict`, `SourceChanged`, `NotPresent`, `GlobalStays`, `SecretNotCopied`, `Blocked`, `Failed`.
+
+Tests: `Tests/SiteData.Migration.Tests.ps1` and `SiteDataMigrationTests` in APD seed an old-layout profile in a temp folder and compare the SHA-256 of every old file before and after a run, a second run, a crash after each item and a crash in the middle of a copy.
