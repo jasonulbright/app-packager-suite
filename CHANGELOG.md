@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [2026.11.22.0109] - 2026-11-22
+
+## 5 components refreshed
+
+### Installer
+
+- Carry app-packager 2026.11.22.0160 with the Installer Type column in the Options images.
+- Carry collection-manager 2026.11.22.0034 with a site that has one saved query loading again.
+- Carry collection-and-compliance-manager 2026.11.22.0031 with retaken Options images.
+- Carry dp-content-manager 2026.11.22.0026 with the Last Status column filled.
+- Carry installer-analysis 2026.11.22.0032 with the DateTime column filled.
+- Carry the other 8 components unchanged.
+
 ### Internal
 
 - Add the site data contract (Q-112b): schemas, scope manifest, fixtures, and the `SuiteCommon` functions `Get-SuiteSiteFolder`, `Get-SuiteActiveSite`, `Get-SuiteDataRoot` and the site name checks. No tool uses them yet. No change in behavior.
