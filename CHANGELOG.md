@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Installer
+
+- A second upgrade over a retired component folder no longer overwrites the first legacy zip: each archive gets a unique name, and the zip is checked before anything moves.
+- Every file of a retired component folder is merged into its legacy folder through the merge step. Nothing is deleted unless it is kept in the legacy folder or in the verified zip.
+- A template you edited in a tool's `Templates` folder survives an upgrade and an uninstall. The new default is written beside it as `<name>.new`. An untouched template is still replaced and removed.
+- The uninstaller lists the folders that stay and where they are. A new check box, "Also delete my data in the suite folders", is off by default and has no effect on a silent uninstall.
+
 ## [2026.11.22.0107] - 2026-11-22
 
 ## 3 components refreshed

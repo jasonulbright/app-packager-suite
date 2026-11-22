@@ -237,7 +237,11 @@ Describe 'Suite installer upgrade over a renamed folder that already has its rep
         $nsh = Get-Content -LiteralPath (Join-Path $script:work 'stage\components.nsh') -Raw
         $nsh | Should -Match 'merge-user-folder\.ps1'
         $nsh | Should -Not -Match 'FindFirst \$0 \$1 ".*suite-core\\\*\.json"'
-        $nsh | Should -Not -Match 'RMDir /r "\$INSTDIR\\suite-core"'
+        # The rename step never deletes recursively. Only the opt-in data removal
+        # names the old folder, so the check reads the migrate macro alone.
+        $migrate = [regex]::Match($nsh, '(?s)!macro SUITE_MIGRATE_FOLDERS.*?!macroend').Value
+        $migrate | Should -Not -BeNullOrEmpty
+        $migrate | Should -Not -Match 'RMDir /r'
     }
 
     It 'installs when a file in the old folder cannot move, and keeps that file and its folder' {

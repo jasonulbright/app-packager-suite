@@ -50,6 +50,8 @@ VIAddVersionKey "LegalCopyright"  "MIT"
 
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
+!include "LogicLib.nsh"
+!include "nsDialogs.nsh"
 
 ; The suite icon: the setup and uninstall executables and, through
 ; components.nsh, the launcher shortcut.
@@ -64,11 +66,16 @@ VIAddVersionKey "LegalCopyright"  "MIT"
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_UNPAGE_CONFIRM
+; A custom page asks whether to delete the user data. Silent uninstall skips it,
+; so /S never deletes data.
+UninstPage custom un.DataPageShow un.DataPageLeave
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "English"
 
 Var PSExe
 Var StartMenuDir
+Var RemoveData
+Var RemoveCheck
 
 Function .onInit
   ; 32-bit installer on 64-bit Windows: $SYSDIR redirects to SysWOW64, whose
@@ -91,6 +98,7 @@ Section "Suite" SecSuite
   !insertmacro SUITE_MIGRATE_FOLDERS
   !insertmacro SUITE_RETIRE_COMPONENTS
   !insertmacro SUITE_INSTALL_FILES
+  !insertmacro SUITE_PLACE_DEFAULTS
 
   CreateDirectory "$StartMenuDir"
   !insertmacro SUITE_CREATE_SHORTCUTS
@@ -113,6 +121,30 @@ SectionEnd
 
 Function un.onInit
   StrCpy $StartMenuDir "$SMPROGRAMS\${SUITE_NAME}"
+  StrCpy $RemoveData 0
+  StrCpy $PSExe "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe"
+  IfFileExists "$PSExe" +2 0
+    StrCpy $PSExe "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
+FunctionEnd
+
+; Page after the confirm page: one check box, off by default.
+Function un.DataPageShow
+  !insertmacro MUI_HEADER_TEXT "Your data" "Choose what happens to your settings, logs, reports and history."
+  nsDialogs::Create 1018
+  Pop $0
+  ${If} $0 == error
+    Abort
+  ${EndIf}
+  ${NSD_CreateLabel} 0 0 100% 54u "Uninstall removes the program files. Your settings, logs, reports and history stay in the suite folders under $INSTDIR. Folders that other tools share are never removed. The last page lists what stays and where."
+  Pop $0
+  ${NSD_CreateCheckbox} 0 62u 100% 12u "Also delete my data in the suite folders (cannot be undone)"
+  Pop $RemoveCheck
+  ${NSD_SetState} $RemoveCheck ${BST_UNCHECKED}
+  nsDialogs::Show
+FunctionEnd
+
+Function un.DataPageLeave
+  ${NSD_GetState} $RemoveCheck $RemoveData
 FunctionEnd
 
 Section "Uninstall"
@@ -126,6 +158,17 @@ Section "Uninstall"
   ; files survives.
   !insertmacro SUITE_UNINSTALL_FILES
   Delete "$INSTDIR\suite-manifest.json"
+
+  ; Only the "Also delete my data" check box (never set by /S) removes the
+  ; suite folders that hold user state.
+  StrCmp $RemoveData ${BST_CHECKED} remove_data keep_data
+  remove_data:
+  DetailPrint "Deleting your data in the suite folders"
+  !insertmacro SUITE_REMOVE_USER_DATA
+  keep_data:
+
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
+
+  !insertmacro SUITE_REPORT_KEPT
 SectionEnd
