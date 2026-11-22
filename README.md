@@ -130,12 +130,26 @@ Two earlier components, ConfigMgr Health Dashboard and Supersedence and
 Dependency Auditor, folded into Site Hygiene. An upgrade over an install
 that still holds them zips each old folder in full to
 `site-hygiene\legacy\<component>.zip` (through `powershell.exe`
-`Compress-Archive`), moves its `*.json` files, `History`, `Logs`, and
-`Reports` to `site-hygiene\legacy\<component>\`, removes the old folder,
-and removes its Start Menu shortcut. A folder whose zip fails is left in
-place. Site Hygiene imports the dashboard's settings and history from
-the legacy folder on its next launch. `Tests\SuiteInstaller.Upgrade.Tests.ps1`
-exercises this path with a fixture installer under a temporary folder.
+`Compress-Archive`) and checks the zip. When that name exists, the new zip
+gets a time stamp, so an earlier archive is never overwritten. Then
+`installer\retire-component.ps1` merges every file of the old folder into
+`site-hygiene\legacy\<component>\` through `merge-user-folder.ps1`: a new
+file moves, an identical file is dropped, and a file with different content
+is kept under a numbered name. The old folder goes only when no file is
+left in it, and its Start Menu shortcut goes with it. A folder whose zip
+fails is left in place. Site Hygiene imports the dashboard's settings and
+history from the legacy folder on its next launch.
+`Tests\SuiteInstaller.Upgrade.Tests.ps1` exercises this path with a fixture
+installer under a temporary folder.
+
+A tool saves its own templates in its `Templates\` folder, beside the shipped
+ones. The installer places the shipped templates through
+`installer\suite-userdata.ps1` and records them in `suite-defaults.json`. A
+missing template is copied. A template you never edited is replaced by the
+new default. A template you edited stays as it is, and the new default is
+written beside it as `<name>.new`. A template written by an older installer
+has no record, so a template that differs from the new default counts as
+edited.
 
 The launcher folder was named `suite-core\` in earlier installers. An
 upgrade renames it to `app-packager-suite\`. When both folders exist,
@@ -147,9 +161,15 @@ cannot move, for example one that a running tool holds open, stays in
 `suite-core\`, and the next upgrade continues the merge.
 
 Uninstalling removes only the files the installer shipped: preferences,
-logs, downloaded icons, and anything else written after install stay in
-place, and folders holding them survive. A component folder disappears
-entirely only when it holds nothing of yours.
+logs, downloaded icons, edited templates, and anything else written after
+install stay in place, and folders holding them survive. A component folder
+disappears entirely only when it holds nothing of yours. An untouched default
+template is deleted. The last page of the uninstaller lists the folders that
+stay and where they are, including the folders under `%LOCALAPPDATA%` that
+suite tools share with other tools. A check box, "Also delete my data in the
+suite folders", is off by default. It removes the component folders under the
+install root and nothing else. A silent uninstall (`/S`) never shows the
+page and never deletes data.
 
 ### The SmartScreen warning
 
