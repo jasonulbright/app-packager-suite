@@ -74,7 +74,6 @@ BeforeAll {
         Write-Seed $local 'AppPackager\CheckConfigMgrResult.json' '[{"App":"chrome"}]'
         Write-Seed $local 'AppPackager\kev-catalog.json' '{"cve":[]}'
         Write-Seed $local 'SignalRidgeLabs\PivotsAndScripts\Sessions\s1.json' ('{"SiteCode":"' + $SiteCode + '","Provider":"cm01.example.com"}')
-        Write-Seed $local 'SignalRidgeLabs\PivotsAndScripts\Sessions\s2.json' '{"SiteCode":"CD2","Provider":"cm02.example.com"}'
         Write-Seed $local 'SignalRidgeLabs\PivotsAndScripts\preferences.json' '{"theme":"dark"}'
         [pscustomobject]@{ Suite = $suite; Local = $local; Data = (Join-Path $Temp 'AppPackagerData') }
     }
@@ -308,11 +307,30 @@ Describe 'Invoke-SuiteSiteMigration' {
         Test-Path (Join-Path $script:P.Data 'sites\AB1\tools\collection-manager\prefs.json') | Should -BeFalse
     }
 
-    It 'notes a Pivots session that names another site' {
+    It 'blocks a Pivots session that names another site and copies the others' {
+        Write-Seed $script:P.Local ('SignalRidgeLabs\PivotsAndScripts\Sessions\s2.json') '{"SiteCode":"CD2","Provider":"cm02.example.com"}'
         $r = Invoke-Mig $script:P
         $s2 = @($r.Items | Where-Object { $_.Source -like '*s2.json' })
         $s2.Count | Should -Be 1
+        $s2[0].Status | Should -Be 'Blocked'
         $s2[0].Detail | Should -Match 'CD2'
+        Test-Path (Join-Path $script:P.Data 'sites\AB1\tools\pivots-and-scripts\sessions\s2.json') | Should -BeFalse
+        Test-Path (Join-Path $script:P.Data 'sites\AB1\tools\pivots-and-scripts\sessions\s1.json') | Should -BeTrue
+    }
+
+    It 'keeps the state of a packager whose name looks like a secret name' {
+        Write-Seed $script:P.Local 'AppPackager\app-history.json' '{"package-1password":{"LastCmVersion":"8.1"},"package-secretserver":{"LastCmVersion":"2.0"}}'
+        [void](Invoke-Mig $script:P)
+        $st = Get-Content (Join-Path $script:P.Data 'sites\AB1\state\app-state.json') -Raw | ConvertFrom-Json
+        $st.'package-secretserver'.LastCmVersion | Should -Be '2.0'
+    }
+
+    It 'does not put the launcher values of another site into this site when -SiteCode names a different site' {
+        $r = Invoke-Mig $script:P -SiteCode 'EF3'
+        $b = @($r.Items | Where-Object { $_.Status -eq 'Blocked' -and $_.Id -eq 'suite.launcher-site' })
+        $b.Count | Should -Be 1
+        $sj = Get-Content (Join-Path $script:P.Data 'sites\EF3\settings.json') -Raw -ErrorAction SilentlyContinue
+        if ($sj) { $sj | Should -Not -Match 'cm01.example.com' }
     }
 
     It 'takes the site code from the parameter, in upper case' {

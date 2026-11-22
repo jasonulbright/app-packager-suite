@@ -3438,7 +3438,7 @@ function Invoke-SuiteSiteMigration {
     $siteJson = Join-Path $siteFolder 'site.json'
     $provider = ''
     $l = Read-SuiteMigrationJson -Path $launcherSettings
-    if ($l -and $l.SMSProvider) { $provider = [string]$l.SMSProvider }
+    if ($l -and $l.SMSProvider -and (-not $l.SiteCode -or ([string]$l.SiteCode).ToUpperInvariant() -eq $siteCode)) { $provider = [string]$l.SMSProvider }
     if (Test-Path -LiteralPath $siteJson) {
         $existingSite = Read-SuiteMigrationJson -Path $siteJson
         if ($existingSite -and [string]$existingSite.siteCode -ceq $siteCode) {
@@ -3452,7 +3452,13 @@ function Invoke-SuiteSiteMigration {
         $bytes = ConvertTo-SuiteMigrationJsonBytes -Object $node
         $h = Get-SuiteMigrationBytesHash $bytes
         if ($dry) { $items.Add((New-SuiteMigrationItem 'site.json' 'site' '(identity)' $siteJson $h 'Planned')) }
-        else { Write-SuiteMigrationVerified -Destination $siteJson -Bytes $bytes -ExpectedHash $h -Hook $Hook; $items.Add((New-SuiteMigrationItem 'site.json' 'site' '(identity)' $siteJson $h 'Copied')) }
+        else {
+            try { Write-SuiteMigrationVerified -Destination $siteJson -Bytes $bytes -ExpectedHash $h -Hook $Hook; $items.Add((New-SuiteMigrationItem 'site.json' 'site' '(identity)' $siteJson $h 'Copied')) }
+            catch [System.IO.InvalidDataException], [System.IO.IOException], [System.UnauthorizedAccessException] {
+                $items.Add((New-SuiteMigrationItem 'site.json' 'site' '(identity)' $siteJson '' 'Failed' $_.Exception.Message))
+                return [pscustomobject]@{ DryRun = $dry; SiteCode = $siteCode; SiteFolder = $siteFolder; Outcome = 'Failed'; Reason = ''; Items = $items.ToArray() }
+            }
+        }
     }
 
     $addMerge = {
@@ -3489,6 +3495,7 @@ function Invoke-SuiteSiteMigration {
         if ($v.Count -gt 0) { $settingsOwned['VersionMonitor'] = [pscustomobject]$v }
     }
     # Suite launcher: site code and SMS Provider. A key that the PowerShell app already gave keeps the first value.
+    if ($l -and (& $otherSite 'suite.launcher-site' $launcherSettings $l.SiteCode)) { $l = $null }
     if ($l) { foreach ($k in 'SiteCode', 'SMSProvider') { if ($l.PSObject.Properties[$k] -and [string]$l.$k -and -not $settingsOwned.Contains($k)) { $settingsOwned[$k] = $l.$k } } }
 
     # Packager history: ConfigMgr check state per packager.
@@ -3505,7 +3512,7 @@ function Invoke-SuiteSiteMigration {
         }
     }
     foreach ($ownedSet in @($settingsOwned, $stateOwned)) {
-        foreach ($d in @(Remove-SuiteMigrationSecret -Node ([pscustomobject]$ownedSet))) { $dropped.Add($d) }
+        foreach ($k in @($ownedSet.Keys)) { foreach ($d in @(Remove-SuiteMigrationSecret -Node $ownedSet[$k] -Path ($k + '.'))) { $dropped.Add($d) } }
     }
     $settingsPrimary = $launcherSettings
     if ($pp) { $settingsPrimary = $appPrefs }
@@ -3523,15 +3530,27 @@ function Invoke-SuiteSiteMigration {
             $items.Add((New-SuiteMigrationItem $id 'site' $sourceDir '' '' 'Blocked' 'the folder is a junction or symbolic link')); return
         }
         $rootLen = $sourceDir.TrimEnd('\').Length + 1
-        foreach ($f in @(Get-ChildItem -LiteralPath $sourceDir -File -Recurse -Force | Sort-Object FullName)) {
-            if ($f.Attributes -band [IO.FileAttributes]::ReparsePoint) { $items.Add((New-SuiteMigrationItem $id 'site' $f.FullName '' '' 'Blocked' 'the file is a link')); continue }
+        # Walk by hand: Windows PowerShell 5.1 follows junctions with -Recurse. A linked folder or file is blocked.
+        $files = New-Object System.Collections.Generic.List[object]
+        $stack = New-Object System.Collections.Generic.Stack[string]
+        $stack.Push($sourceDir)
+        while ($stack.Count -gt 0) {
+            $dir = $stack.Pop()
+            foreach ($e in @(Get-ChildItem -LiteralPath $dir -Force)) {
+                if ($e.Attributes -band [IO.FileAttributes]::ReparsePoint) { $items.Add((New-SuiteMigrationItem $id 'site' $e.FullName '' '' 'Blocked' 'the path is a junction or symbolic link')); continue }
+                if ($e.PSIsContainer) { $stack.Push($e.FullName) } else { $files.Add($e) }
+            }
+        }
+        foreach ($f in @($files | Sort-Object FullName)) {
             $rel = $f.FullName.Substring($rootLen)
-            $d = ''
             if ($note -eq 'sessions') {
                 $sj = Read-SuiteMigrationJson -Path $f.FullName
-                if ($sj -and $sj.SiteCode -and ([string]$sj.SiteCode).ToUpperInvariant() -ne $siteCode) { $d = "the session names site $($sj.SiteCode); copied to $siteCode" }
+                if ($sj -and $sj.SiteCode -and ([string]$sj.SiteCode).ToUpperInvariant() -ne $siteCode) {
+                    $items.Add((New-SuiteMigrationItem $id 'site' $f.FullName '' '' 'Blocked' "the session names site $($sj.SiteCode), not $siteCode; run the migration with -SiteCode $($sj.SiteCode)"))
+                    continue
+                }
             }
-            $candidates.Add([pscustomobject]@{ Id = $id; Source = $f.FullName; Destination = (Join-Path $destDir $rel); Owned = $null; Kind = 'file'; Detail = $d })
+            $candidates.Add([pscustomobject]@{ Id = $id; Source = $f.FullName; Destination = (Join-Path $destDir $rel); Owned = $null; Kind = 'file'; Detail = '' })
         }
     }
     $apLocal = Join-Path $LocalRoot 'AppPackager'
@@ -3565,7 +3584,7 @@ function Invoke-SuiteSiteMigration {
             if ($pj) {
                 $owned = [ordered]@{}
                 foreach ($k in $t.PrefKeys) { if ($pj.PSObject.Properties[$k] -and $null -ne $pj.$k -and "$($pj.$k)" -ne '') { $owned[$k] = $pj.$k } }
-                foreach ($d in @(Remove-SuiteMigrationSecret -Node ([pscustomobject]$owned))) { $dropped.Add($d) }
+                foreach ($k in @($owned.Keys)) { foreach ($d in @(Remove-SuiteMigrationSecret -Node $owned[$k] -Path ($k + '.'))) { $dropped.Add($d) } }
                 & $addMerge $t.Id $prefsPath (Join-Path $dest 'prefs.json') $owned
             }
         }
