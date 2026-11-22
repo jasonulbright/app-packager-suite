@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Internal
+
+- Add the site data contract (Q-112b): schemas, scope manifest, fixtures, and the `SuiteCommon` functions `Get-SuiteSiteFolder`, `Get-SuiteActiveSite`, `Get-SuiteDataRoot` and the site name checks. No tool uses them yet. No change in behavior.
+
 ## [2026.11.22.0108] - 2026-11-22
 
 ## Installer keeps your data

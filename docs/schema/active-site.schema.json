@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/jasonulbright/app-packager-suite/docs/schema/active-site.schema.json",
+  "title": "Site data: active-site.json",
+  "description": "The site folder that the user used last, <DATA ROOT>\\active-site.json.",
+  "type": "object",
+  "required": ["schemaVersion", "siteCode", "changedUtc"],
+  "properties": {
+    "schemaVersion": { "enum": [1] },
+    "siteCode": { "type": "string", "pattern": "^[A-Z0-9]{3}(~(?:[2-9]|[1-9][0-9]+))?$" },
+    "changedUtc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" }
+  }
+}

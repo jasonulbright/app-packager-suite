@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/jasonulbright/app-packager-suite/docs/schema/scope-manifest.schema.json",
+  "title": "Site data: scope manifest",
+  "type": "object",
+  "required": ["schemaVersion", "entries"],
+  "properties": {
+    "schemaVersion": { "enum": [1] },
+    "description": { "type": "string" },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "app", "kind", "location", "key", "scope", "import", "target"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(\\.[a-z0-9-]+)+$" },
+          "app": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["setting", "file", "folder", "table"] },
+          "location": { "type": "string", "minLength": 1 },
+          "key": { "type": "string", "minLength": 1 },
+          "scope": { "enum": ["site", "global", "secret"] },
+          "import": { "enum": ["on", "off", "never"] },
+          "target": { "type": ["string", "null"] },
+          "note": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "siteCode": "AB1",
+  "label": "Production",
+  "providers": ["provider-ab1.example.com", "provider-ab1-2.example.com"],
+  "createdUtc": "2026-11-22T09:00:00Z",
+  "lastUsedUtc": "2026-11-22T10:30:00Z",
+  "migratedFrom": "legacy-single-site"
+}
