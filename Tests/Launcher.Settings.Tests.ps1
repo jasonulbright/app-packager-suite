@@ -74,6 +74,6 @@ Describe 'start-suite.ps1 settings handlers' {
     }
 
     It 'reports the saved message only after a successful write' {
-        $script:Source | Should -Match '(?s)if \(\$result\.Saved\) \{\s*Set-SuiteStatus ''Connection profile saved'
+        $script:Source | Should -Match '(?s)if \(\$result\.Saved\) \{.*?Set-SuiteStatus \(''Connection profile saved'
     }
 }

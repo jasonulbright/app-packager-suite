@@ -10,7 +10,7 @@
     start-suite.ps1 is a window script. The first tests read its XAML and its
     AST and create no window. The layout tests create the footer bar from the
     launcher XAML in a window that is shown off screen, so they run in an STA
-    host only. The two boxes txtSiteCode and txtProvider stay in the launcher
+    host only. The two boxes cmbSite and txtProvider stay in the launcher
     main window and are the place to edit the connection profile, so the footer
     does not repeat it.
 #>

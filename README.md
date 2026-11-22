@@ -42,14 +42,25 @@ variable; the SMS Provider computer can be set with a parameter or
 tool, discovered as sibling folders of this repository (override the
 root in `suite.settings.json`), with each tool's version read from its
 CHANGELOG. Every tile launches its tool as a separate process. The
-connection profile - site code and SMS provider - is entered once and
-handed to each launch through the `SUITE_CM_PROVIDER` /
-`SUITE_CM_SITECODE` environment variables; `Connect-CMSite` falls back
-to the provider variable, so tools connect without per-tool
-configuration. The two boxes at the top of the launcher window are the
-place to edit them. The footer shows the status text and the Check for
-updates button; a long status text ends in an ellipsis, and its tooltip
-shows the whole text. The launcher embeds no tools and hosts no plugins.
+active site - site code and SMS provider - is chosen once in the Site
+box and the SMS Provider box at the top of the launcher window. The
+Site box lists the sites you used before, and a new three-character
+code can be typed. Save writes the choice to `active-site.json` in
+`%LOCALAPPDATA%\AppPackagerData` and hands it to each launch through
+the `SUITE_CM_SITECODE`, `APP_PACKAGER_SITE` and `SUITE_CM_PROVIDER`
+environment variables; `Connect-CMSite` falls back to the provider
+variable, so tools connect without per-tool configuration. Each tool
+keeps its site data (preferences with the site values, reports,
+history, run files) in
+`%LOCALAPPDATA%\AppPackagerData\sites\<SITE>	ools\<tool>`, so the
+data of one site never shows in another. A tool that is already open
+keeps its site until you restart it, and its footer says when the
+launcher uses another site. The first start of a tool after an update
+copies its old site data into the site folder and keeps the old files.
+The layout is in `docs/reference/site-data-contract.md`. The footer
+shows the status text and the Check for updates button; a long status
+text ends in an ellipsis, and its tooltip shows the whole text. The
+launcher embeds no tools and hosts no plugins.
 
 ## All-in-one installer
 

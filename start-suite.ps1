@@ -2,7 +2,9 @@
 # Thin by design -- every tool launches as its own process; the only state
 # handed across is the connection profile via environment variables
 # (SUITE_CM_PROVIDER is a Connect-CMSite fallback; SUITE_CM_SITECODE is
-# published for tools that opt in).
+# published for tools that opt in) and the active site in active-site.json
+# of the data root (Q-112f). Each tool keeps its site data in
+# sites\<SITE>\tools\<tool> and keeps the site it started with.
 if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
     Start-Process powershell.exe -ArgumentList '-NoProfile','-STA','-ExecutionPolicy','Bypass','-File',"`"$PSCommandPath`"" | Out-Null
     exit
@@ -23,6 +25,15 @@ $global:Prefs = Read-SuiteSettings -Path $script:SettingsPath -Defaults @{
     SMSProvider = ''
     DarkMode    = $true
     ToolsRoot   = ''
+}
+
+# The site. SiteCode and SMSProvider in suite.settings.json are the old single-site values: they stay in the file for one
+# release and are only read here, as a last source. The site comes from active-site.json (or the environment), and the
+# first start after an update copies the old values into the site folder (Resolve-SuiteToolSite, once).
+# The launcher reads the file, never the environment: it sets the environment itself for the tools it starts.
+$script:LauncherSite = Resolve-SuiteToolSite -Tool 'app-packager-suite' -ToolRoot $PSScriptRoot -LegacyPrefsPath $script:SettingsPath -IgnoreEnvironment
+if ($script:LauncherSite.Active -and -not (Get-SuiteActiveSite -IgnoreEnvironment)) {
+    [void](Set-SuiteActiveSite -SiteCode $script:LauncherSite.SiteFolder)
 }
 
 # Registry of suite tools: folder name, display name, entry script.
@@ -86,10 +97,19 @@ function Get-InstalledTools {
 function Set-LaunchEnvironment {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Sets process-scope environment variables for child inheritance.')]
     param()
-    $provider = ([string]$global:Prefs['SMSProvider']).Trim()
-    $site     = ([string]$global:Prefs['SiteCode']).Trim()
+    # With a site chosen: SUITE_CM_SITECODE is the three-character code (left out for a reused code such as AB1~2, which a
+    # tool would read as AB1) and APP_PACKAGER_SITE is the folder name. Without one: the old values of suite.settings.json.
+    $provider = ([string]$script:LauncherSite.Provider).Trim()
+    $site     = ([string]$script:LauncherSite.SiteCode).Trim()
+    $folder   = ([string]$script:LauncherSite.SiteFolder).Trim()
+    if (-not $script:LauncherSite.Active) {
+        $provider = ([string]$global:Prefs['SMSProvider']).Trim()
+        $site     = ([string]$global:Prefs['SiteCode']).Trim()
+        $folder   = ''
+    }
     if ($provider) { $env:SUITE_CM_PROVIDER = $provider } else { Remove-Item Env:SUITE_CM_PROVIDER -ErrorAction SilentlyContinue }
-    if ($site)     { $env:SUITE_CM_SITECODE = $site }     else { Remove-Item Env:SUITE_CM_SITECODE -ErrorAction SilentlyContinue }
+    if ($site -and (-not $folder -or $folder -ceq $site)) { $env:SUITE_CM_SITECODE = $site } else { Remove-Item Env:SUITE_CM_SITECODE -ErrorAction SilentlyContinue }
+    if ($folder) { $env:APP_PACKAGER_SITE = $folder } else { Remove-Item Env:APP_PACKAGER_SITE -ErrorAction SilentlyContinue }
 }
 
 function Save-LauncherSettings {
@@ -102,6 +122,41 @@ function Save-LauncherSettings {
     }
     $message = '{0} not saved: cannot write {1}. Close any program that holds the file, make the file and its folder writable, then try again.' -f $Subject, $script:SettingsPath
     return [pscustomobject]@{ Saved = $false; Message = $message }
+}
+
+function Save-LauncherSite {
+    # Saves the site the user chose: site.json (identity and provider), active-site.json, and the provider in the site's
+    # settings.json. Returns Saved, Folder and Message. A message is empty after a successful write. The old values in
+    # suite.settings.json are not touched.
+    param([string]$SiteText, [string]$Provider)
+    $parsed = ConvertFrom-SuiteSiteFolderName -Name ([string]$SiteText).Trim()
+    if (-not $parsed) {
+        return [pscustomobject]@{ Saved = $false; Folder = ''; Message = 'Site not saved: the site code must be three letters or digits, for example AB1. AUX, CON, ENV, NUL, PRN and SMS are reserved.' }
+    }
+    # A provider belongs to one site. A new site with the provider of another site is a leftover in the box.
+    $typed = ([string]$Provider).Trim()
+    $known = @(Get-SuiteSiteList)
+    if ($typed -and -not ($known | Where-Object { $_.FolderName -ceq $parsed.FolderName })) {
+        $owner = @($known | Where-Object { $_.Providers -contains $typed } | Select-Object -First 1)
+        if ($owner.Count -gt 0) {
+            return [pscustomobject]@{ Saved = $false; Folder = ''; Message = ('Site not saved: the SMS Provider {0} belongs to site {1}. Enter the SMS Provider of the new site {2}.' -f $typed, $owner[0].FolderName, $parsed.FolderName) }
+        }
+    }
+    $folder = Set-SuiteSiteIdentity -SiteCode $parsed.FolderName -Provider $Provider
+    if (-not $folder) {
+        return [pscustomobject]@{ Saved = $false; Folder = ''; Message = ('Site not saved: cannot write the site folder {0}. Make the folder writable, then try again.' -f (Get-SuiteSiteFolder -SiteCode $parsed.FolderName)) }
+    }
+    if (-not (Set-SuiteActiveSite -SiteCode $folder)) {
+        return [pscustomobject]@{ Saved = $false; Folder = $folder; Message = ('Site not saved: cannot write active-site.json in {0}. Make the folder writable, then try again.' -f (Get-SuiteDataRoot)) }
+    }
+    $siteSettings = Join-Path (Get-SuiteSiteFolder -SiteCode $folder) 'settings.json'
+    $table = ConvertTo-SuiteSettingsTable -Path $siteSettings
+    $table['SiteCode'] = $parsed.SiteCode
+    if (([string]$Provider).Trim()) { $table['SMSProvider'] = ([string]$Provider).Trim() }
+    if (-not (Save-SuiteSettings -Path $siteSettings -Settings $table)) {
+        return [pscustomobject]@{ Saved = $false; Folder = $folder; Message = ('Site not saved: cannot write {0}. Make the folder writable, then try again.' -f $siteSettings) }
+    }
+    return [pscustomobject]@{ Saved = $true; Folder = $folder; Message = '' }
 }
 
 function Start-SuiteTool {
@@ -148,17 +203,20 @@ $mainXaml = @'
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="Site Code" FontSize="12" VerticalAlignment="Center"
+                <TextBlock Grid.Column="0" Text="Site" FontSize="12" VerticalAlignment="Center"
                            Foreground="{DynamicResource MahApps.Brushes.Gray1}" Margin="0,0,6,0"/>
-                <TextBox x:Name="txtSiteCode" Grid.Column="1" Width="70" FontSize="12" Padding="6,3,6,3"
-                         Controls:TextBoxHelper.Watermark="MCM" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                <ComboBox x:Name="cmbSite" Grid.Column="1" Width="90" FontSize="12" Padding="6,3,6,3" IsEditable="True"
+                          Controls:TextBoxHelper.Watermark="AB1" VerticalAlignment="Center" Margin="0,0,14,0"
+                          ToolTip="The active site. Pick a known site or type a new three-character site code, then choose Save. Tools you start next use this site. A tool that is already open keeps its site until you restart it."/>
                 <TextBlock Grid.Column="2" Text="SMS Provider" FontSize="12" VerticalAlignment="Center"
                            Foreground="{DynamicResource MahApps.Brushes.Gray1}" Margin="0,0,6,0"/>
                 <TextBox x:Name="txtProvider" Grid.Column="3" FontSize="12" Padding="6,3,6,3"
-                         Controls:TextBoxHelper.Watermark="cm01.contoso.com" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                         Controls:TextBoxHelper.Watermark="cm01.example.com" VerticalAlignment="Center" Margin="0,0,14,0"
+                         ToolTip="The SMS Provider server of the site. It is saved with the site and passed to the tools you start."/>
                 <Button x:Name="btnSaveProfile" Grid.Column="4" Content="Save" MinWidth="70" Height="28"
                         Style="{DynamicResource MahApps.Styles.Button.Square.Accent}"
-                        Controls:ControlsHelper.ContentCharacterCasing="Normal" Margin="0,0,14,0"/>
+                        Controls:ControlsHelper.ContentCharacterCasing="Normal" Margin="0,0,14,0"
+                        ToolTip="Saves the site and its SMS Provider and makes it the active site for every tool you start next."/>
                 <TextBlock x:Name="txtThemeLabel" Grid.Column="5" Text="Dark Theme" FontSize="11"
                            VerticalAlignment="Center" Margin="0,0,6,0"/>
                 <Controls:ToggleSwitch x:Name="toggleTheme" Grid.Column="6" VerticalAlignment="Center"
@@ -195,7 +253,7 @@ $mainXaml = @'
 
 [xml]$mx = $mainXaml
 $window = [System.Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $mx))
-$txtSiteCode    = $window.FindName('txtSiteCode')
+$cmbSite         = $window.FindName('cmbSite')
 $txtProvider    = $window.FindName('txtProvider')
 $btnSaveProfile = $window.FindName('btnSaveProfile')
 $toggleTheme    = $window.FindName('toggleTheme')
@@ -262,19 +320,45 @@ Initialize-SuiteTheme -Window $window `
     -WorkflowButtons $script:TileButtons `
     -OptionsButtons @($btnSaveProfile)
 
-$txtSiteCode.Text = [string]$global:Prefs['SiteCode']
-$txtProvider.Text = [string]$global:Prefs['SMSProvider']
+# The site box lists the known sites. A site with no folder yet (a code typed in the box, or the old value) shows too.
+function Update-SiteChoices {
+    param([string]$Select)
+    $names = New-Object System.Collections.Generic.List[string]
+    foreach ($s in @(Get-SuiteSiteList)) { $names.Add([string]$s.FolderName) }
+    if ($Select -and -not ($names -contains $Select)) { $names.Add($Select) }
+    $cmbSite.ItemsSource = @($names.ToArray())
+    $cmbSite.Text = $Select
+}
+if ($script:LauncherSite.Active) {
+    Update-SiteChoices -Select $script:LauncherSite.SiteFolder
+    $txtProvider.Text = [string]$script:LauncherSite.Provider
+}
+else {
+    Update-SiteChoices -Select ([string]$global:Prefs['SiteCode'])
+    $txtProvider.Text = [string]$global:Prefs['SMSProvider']
+}
+
+# Choosing a known site fills in its provider.
+$cmbSite.Add_SelectionChanged({
+    $picked = [string]$cmbSite.SelectedItem
+    if (-not $picked) { return }
+    $known = @(Get-SuiteSiteList | Where-Object { $_.FolderName -ceq $picked }) | Select-Object -First 1
+    if ($known -and $known.Providers.Count -gt 0) { $txtProvider.Text = [string]$known.Providers[0] } else { $txtProvider.Text = '' }
+})
 
 $btnSaveProfile.Add_Click({
-    $global:Prefs['SiteCode']    = ([string]$txtSiteCode.Text).Trim()
-    $global:Prefs['SMSProvider'] = ([string]$txtProvider.Text).Trim()
-    $result = Save-LauncherSettings -Subject 'Connection profile'
-    Set-LaunchEnvironment
+    $previous = [string]$script:LauncherSite.SiteFolder
+    $result = Save-LauncherSite -SiteText $cmbSite.Text -Provider $txtProvider.Text
     if ($result.Saved) {
-        Set-SuiteStatus 'Connection profile saved; new launches inherit it.'
+        $script:LauncherSite = Resolve-SuiteToolSite -Tool 'app-packager-suite' -ToolRoot $PSScriptRoot -LegacyPrefsPath $script:SettingsPath -NoMigration -IgnoreEnvironment
+        Set-LaunchEnvironment
+        Update-SiteChoices -Select $result.Folder
+        $note = ' Tools you start next use it.'
+        if ($previous -and $previous -cne $result.Folder) { $note = ' Tools that are already open keep site {0} until you restart them.' -f $previous }
+        Set-SuiteStatus ('Connection profile saved: site {0}.{1}' -f $result.Folder, $note)
         return
     }
-    Set-SuiteStatus ($result.Message + ' New launches in this session still inherit it.')
+    Set-SuiteStatus $result.Message
     [void](Show-ThemedMessage -Owner $window -Title 'Connection profile not saved' -Message $result.Message -Buttons OK -Icon Error)
 })
 
