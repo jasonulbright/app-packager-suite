@@ -1,6 +1,6 @@
 # Site data contract
 
-Status: contract schemaVersion 1. No app reads these locations yet. This page defines them so that App Packager Desktop (APD), the PowerShell app and the suite tools use one layout. The migration (Q-112c, section Migration below) copies old data into them by a function call. The switcher follows in later work items (Q-112d and later).
+Status: contract schemaVersion 1. The suite launcher and the suite tools read and write these locations (Q-112f, last section). APD and the PowerShell app follow in Q-112d and Q-112g. This page defines the layout so that App Packager Desktop (APD), the PowerShell app and the suite tools use one layout. The migration (Q-112c, section Migration below) copies old data into them.
 
 ## Files of the contract
 
@@ -141,3 +141,30 @@ Rules:
 Statuses: `Planned`, `Copied`, `AlreadyDone`, `Conflict`, `SourceChanged`, `NotPresent`, `GlobalStays`, `SecretNotCopied`, `Blocked`, `Failed`.
 
 Tests: `Tests/SiteData.Migration.Tests.ps1` and `SiteDataMigrationTests` in APD seed an old-layout profile in a temp folder and compare the SHA-256 of every old file before and after a run, a second run, a crash after each item and a crash in the middle of a copy.
+
+## The launcher and the suite tools (Q-112f)
+
+Code: `Get-SuiteSiteList`, `Set-SuiteSiteIdentity`, `Set-SuiteActiveSite`, `Resolve-SuiteToolSite`, `Resolve-SuiteToolPath`, `Read-SuiteToolPrefs`, `Save-SuiteToolPrefs`, `Set-SuiteFooterNote` and `Start-SuiteSiteWatch` in `SuiteCommon`. The launcher (`start-suite.ps1`) and each tool call them.
+
+Rules:
+
+- The launcher shows the active site in the Site box, with the known sites in the list, and a new three-character code can be typed. Save writes `site.json` (the provider moves to the front of `providers`), `active-site.json` and `SiteCode` and `SMSProvider` in the site's `settings.json`. It also sets `SUITE_CM_SITECODE` (the three-character code, left out for a reused code such as `AB1~2`), `APP_PACKAGER_SITE` (the folder name) and `SUITE_CM_PROVIDER` for the tools it starts. The old `SiteCode` and `SMSProvider` in `suite.settings.json` stay as they are for one release. They are read only when no site is chosen.
+- A tool calls `Resolve-SuiteToolSite` once at start. The order of choice is the one above, with the `SiteCode` of the tool's own old prefs file as the last source. With no site the result is not active and the tool keeps its old paths.
+- With a site, the first start of the tool for that site copies the tool's old site data into `sites\<SITE>\tools\<tool>` (`Invoke-SuiteSiteMigration -Tool <tool>`: copy, SHA-256 check, old files kept) and writes `tools\<tool>\migrated.json`. A later start skips the copy. A site folder with `~N` gets no copy. A tool whose old prefs name another site gets no copy of any file.
+- Site prefs: `Read-SuiteToolPrefs` takes the site keys from `tools\<tool>\prefs.json` (a key the file lacks takes the default, so one site never shows the values of another) and the other keys from the old prefs file. `Save-SuiteToolPrefs` writes the site keys to the site file, the other keys to the old file, and moves a changed provider to the front of `providers`. A tool never changes the site code. The site is chosen in the launcher.
+- Stores: `Resolve-SuiteToolPath -Site $site -Name <store> -LegacyPath <old path>` returns the path below `tools\<tool>` for a site, and the old path with no site. No tool stores an absolute default path in its prefs.
+- A tool keeps the site it started with. `Start-SuiteSiteWatch` reads `active-site.json` (never the environment) every 5 seconds while the window is open. When the launcher chose another site, the footer shows a note: "The launcher now uses site CD2. This window keeps site AB1 until you restart it."
+
+Store names below `sites\<SITE>\tools\<tool>\` (these are the names that the migration writes):
+
+| Tool | Site prefs keys in `prefs.json` | Other stores |
+|---|---|---|
+| `site-hygiene` | `SiteCode`, `SMSProvider`, `SQLServer` | `lastscan.json`, `suppressions.json`, `history\`, `reports\` |
+| `deployment-helper` | `SiteCode`, `SMSProvider` | `deployment-audit.jsonl`, `rings\` (with `rings\runs\`), `rollouts\` |
+| `update-planner` | `SiteCode`, `SMSProvider`, `Waves` | `update-planner-actions.jsonl`, `reports\` |
+| `device-inspector` | `SiteCode`, `SMSProvider`, `LastDevice` | `DeviceInspector-actions.log`, `reports\` |
+| `collection-manager`, `collection-and-compliance-manager`, `maintenance-window-manager`, `dp-content-manager` | `SiteCode`, `SMSProvider` | `reports\` |
+| `pivots-and-scripts` | `SiteCode`, `SMSProvider` | `sessions\` |
+| `detection-tester`, `installer-analysis` | none | none (their prefs and reports are global) |
+
+Tests: `Tests/SiteTools.Tests.ps1` (site list, per-tool migration, prefs split, paths, launcher helpers, two-site isolation).
