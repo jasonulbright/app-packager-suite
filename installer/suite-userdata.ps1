@@ -46,6 +46,7 @@ param(
 )
 
 Set-StrictMode -Version Latest
+try { Start-Transcript -Path (Join-Path $env:TEMP ('ud-dbg-' + $Mode + '.log')) -Force | Out-Null } catch { $null = $_ }
 $ErrorActionPreference = 'Stop'
 
 function Get-Sha256 {
