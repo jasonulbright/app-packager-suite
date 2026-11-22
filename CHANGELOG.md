@@ -2,8 +2,13 @@
 
 ## [Unreleased]
 
+## [2026.11.22.0108] - 2026-11-22
+
+## Installer keeps your data
+
 ### Installer
 
+- Carry the 12 other components unchanged.
 - A second upgrade over a retired component folder no longer overwrites the first legacy zip: each archive gets a unique name, and the zip is checked before anything moves.
 - Every file of a retired component folder is merged into its legacy folder through the merge step. Nothing is deleted unless it is kept in the legacy folder or in the verified zip.
 - A template you edited in a tool's `Templates` folder survives an upgrade and an uninstall. The new default is written beside it as `<name>.new`. An untouched template is still replaced and removed.
