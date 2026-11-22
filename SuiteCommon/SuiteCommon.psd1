@@ -28,6 +28,15 @@
         'Get-SuiteCommonVersion'
         'Repair-WindowsPowerShellModulePath'
 
+        # Site data contract
+        'Test-SuiteSiteCode'
+        'Test-SuiteSiteName'
+        'ConvertFrom-SuiteSiteFolderName'
+        'Get-SuiteFreeSiteFolderName'
+        'Get-SuiteDataRoot'
+        'Get-SuiteSiteFolder'
+        'Get-SuiteActiveSite'
+
         # Window chrome
         'Get-TitleBarDragHeight'
         'Get-InputAncestors'

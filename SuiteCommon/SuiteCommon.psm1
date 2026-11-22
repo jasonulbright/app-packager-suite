@@ -635,6 +635,188 @@ function Save-SuiteSettings {
 # Module identity
 # ---------------------------------------------------------------------------
 
+#region Site data contract (Q-112b)
+# Paths and names of the per-site data layout. See docs\reference\site-data-contract.md.
+# Nothing here creates, reads or writes a folder except Get-SuiteActiveSite (read only).
+# No app calls these functions yet.
+
+$script:SuiteReservedSiteCodes = @('AUX', 'CON', 'ENV', 'NUL', 'PRN', 'SMS')
+
+function Test-SuiteSiteCode {
+    <#
+    .SYNOPSIS
+        True when the value is a valid ConfigMgr site code for a folder name.
+    .DESCRIPTION
+        Three characters A-Z or 0-9, either case, no spaces. The names that Windows and
+        ConfigMgr reserve (AUX, CON, ENV, NUL, PRN, SMS) are refused.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param([AllowNull()][AllowEmptyString()][string]$SiteCode)
+    if ([string]::IsNullOrEmpty($SiteCode)) { return $false }
+    if ($SiteCode -notmatch '^[A-Za-z0-9]{3}$') { return $false }
+    return ($script:SuiteReservedSiteCodes -notcontains $SiteCode.ToUpperInvariant())
+}
+
+function ConvertFrom-SuiteSiteFolderName {
+    <#
+    .SYNOPSIS
+        Splits a site folder name (AB1 or AB1~2) into its site code and ordinal. Returns $null when invalid.
+    #>
+    [CmdletBinding()]
+    param([AllowNull()][AllowEmptyString()][string]$Name)
+    if ([string]::IsNullOrEmpty($Name)) { return $null }
+    $m = [regex]::Match($Name, '^([A-Za-z0-9]{3})(?:~([2-9]|[1-9][0-9]+))?$')
+    if (-not $m.Success) { return $null }
+    if (-not (Test-SuiteSiteCode -SiteCode $m.Groups[1].Value)) { return $null }
+    $code = $m.Groups[1].Value.ToUpperInvariant()
+    $ordinal = 1
+    if ($m.Groups[2].Success) { $ordinal = [int]$m.Groups[2].Value }
+    $folder = $code
+    if ($ordinal -gt 1) { $folder = '{0}~{1}' -f $code, $ordinal }
+    return [pscustomobject]@{ SiteCode = $code; Ordinal = $ordinal; FolderName = $folder }
+}
+
+function Test-SuiteSiteName {
+    <#
+    .SYNOPSIS
+        True when the value is a valid site folder name: a site code, or a site code with ~N (N 2 or more) for a reused code.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param([AllowNull()][AllowEmptyString()][string]$Name)
+    return ($null -ne (ConvertFrom-SuiteSiteFolderName -Name $Name))
+}
+
+function Test-SuiteSitePathSegment {
+    # A tool or area segment: lower case letters, digits and hyphens, not starting with a hyphen.
+    param([AllowNull()][AllowEmptyString()][string]$Value)
+    return (-not [string]::IsNullOrEmpty($Value)) -and ($Value -cmatch '^[a-z0-9][a-z0-9-]*$')
+}
+
+function Get-SuiteFreeSiteFolderName {
+    <#
+    .SYNOPSIS
+        Returns the first free folder name for a site code: AB1, then AB1~2, AB1~3 and so on.
+    .DESCRIPTION
+        Used when a code is reused by a different environment. Names compare without regard to case.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][string]$SiteCode,
+        [string[]]$ExistingNames = @()
+    )
+    if (-not (Test-SuiteSiteCode -SiteCode $SiteCode)) { throw "Invalid site code: '$SiteCode'." }
+    $code = $SiteCode.ToUpperInvariant()
+    $taken = @{}
+    foreach ($n in @($ExistingNames)) { if ($n) { $taken[$n.ToUpperInvariant()] = $true } }
+    if (-not $taken.ContainsKey($code)) { return $code }
+    $i = 2
+    while ($taken.ContainsKey(('{0}~{1}' -f $code, $i))) { $i++ }
+    return ('{0}~{1}' -f $code, $i)
+}
+
+function Get-SuiteDataRoot {
+    <#
+    .SYNOPSIS
+        Returns the per-user data root of the site layout. Creates nothing.
+    .DESCRIPTION
+        APP_PACKAGER_DATA_ROOT, when set, is a container: the root is <value>\Users\<SID>
+        (an already scoped value is kept). Without it the root is %LOCALAPPDATA%\AppPackagerData.
+        A root under Program Files is refused.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([string]$DataRootOverride)
+    $override = $DataRootOverride
+    if ([string]::IsNullOrWhiteSpace($override)) { $override = [Environment]::GetEnvironmentVariable('APP_PACKAGER_DATA_ROOT') }
+    if (-not [string]::IsNullOrWhiteSpace($override)) {
+        $full = [IO.Path]::GetFullPath($override.Trim()).TrimEnd('\', '/')
+        $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+        $parent = Split-Path -Path $full -Parent
+        $alreadyScoped = ((Split-Path -Path $full -Leaf) -eq $sid) -and $parent -and ((Split-Path -Path $parent -Leaf) -eq 'Users')
+        if ($alreadyScoped) { $root = $full } else { $root = Join-Path (Join-Path $full 'Users') $sid }
+    }
+    else {
+        $local = [Environment]::GetFolderPath('LocalApplicationData')
+        if ([string]::IsNullOrWhiteSpace($local)) { throw 'The LocalApplicationData folder could not be resolved.' }
+        $root = Join-Path $local 'AppPackagerData'
+    }
+    foreach ($pf in @([Environment]::GetFolderPath('ProgramFiles'), [Environment]::GetFolderPath('ProgramFilesX86'))) {
+        if ([string]::IsNullOrWhiteSpace($pf)) { continue }
+        $p = $pf.TrimEnd('\', '/')
+        if ($root.Equals($p, [StringComparison]::OrdinalIgnoreCase) -or $root.StartsWith($p + '\', [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'User data cannot be stored under Program Files.'
+        }
+    }
+    return $root
+}
+
+function Get-SuiteSiteFolder {
+    <#
+    .SYNOPSIS
+        Returns the path of a site folder, <DataRoot>\sites\<FOLDER>, with an optional tool or area below it. Creates nothing.
+    .DESCRIPTION
+        -SiteCode takes a folder name (AB1 or AB1~2). -Tool gives tools\<tool>. -Area gives a relative path
+        of lower case segments (for example deployments or pivots\sessions). -Tool and -Area are exclusive.
+        An invalid value throws.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][string]$SiteCode,
+        [string]$Tool,
+        [string]$Area,
+        [string]$DataRoot
+    )
+    $parsed = ConvertFrom-SuiteSiteFolderName -Name $SiteCode
+    if (-not $parsed) { throw "Invalid site folder name: '$SiteCode'." }
+    if ($Tool -and $Area) { throw 'Use -Tool or -Area, not both.' }
+    if (-not $DataRoot) { $DataRoot = Get-SuiteDataRoot }
+    $path = Join-Path (Join-Path $DataRoot 'sites') $parsed.FolderName
+    if ($Tool) {
+        if (-not (Test-SuiteSitePathSegment -Value $Tool)) { throw "Invalid tool name: '$Tool'." }
+        $path = Join-Path (Join-Path $path 'tools') $Tool
+    }
+    elseif ($Area) {
+        foreach ($seg in $Area.Split('\')) {
+            if (-not (Test-SuiteSitePathSegment -Value $seg)) { throw "Invalid area: '$Area'." }
+        }
+        $path = Join-Path $path $Area
+    }
+    return $path
+}
+
+function Get-SuiteActiveSite {
+    <#
+    .SYNOPSIS
+        Returns the active site as @{ SiteCode; Source } or $null. Reads only.
+    .DESCRIPTION
+        Order: SUITE_CM_SITECODE, APP_PACKAGER_SITE, then active-site.json in the data root.
+        A value that is not a valid site folder name is skipped. Nothing is written.
+    #>
+    [CmdletBinding()]
+    param([string]$DataRoot)
+    foreach ($name in 'SUITE_CM_SITECODE', 'APP_PACKAGER_SITE') {
+        $v = [Environment]::GetEnvironmentVariable($name)
+        $parsed = ConvertFrom-SuiteSiteFolderName -Name $v
+        if ($parsed) { return [pscustomobject]@{ SiteCode = $parsed.FolderName; Source = $name } }
+    }
+    try {
+        if (-not $DataRoot) { $DataRoot = Get-SuiteDataRoot }
+        $file = Join-Path $DataRoot 'active-site.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return $null }
+        $json = Get-Content -LiteralPath $file -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        if ($json.schemaVersion -ne 1) { return $null }
+        $parsed = ConvertFrom-SuiteSiteFolderName -Name ([string]$json.siteCode)
+        if ($parsed) { return [pscustomobject]@{ SiteCode = $parsed.FolderName; Source = 'active-site.json' } }
+    }
+    catch { Write-Verbose "active-site.json not usable: $($_.Exception.Message)" }
+    return $null
+}
+#endregion
+
 function Get-SuiteCommonVersion {
     <#
     .SYNOPSIS

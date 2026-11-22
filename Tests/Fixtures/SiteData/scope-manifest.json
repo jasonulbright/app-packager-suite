@@ -1,0 +1,725 @@
+{
+  "schemaVersion": 1,
+  "description": "Scope manifest of the per-site data layout. Each entry names one store and says whether it belongs to a site, is global, or is a secret.",
+  "entries": [
+    {
+      "id": "apd.site-code",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "SiteCode",
+      "scope": "site",
+      "import": "never",
+      "target": "settings.json",
+      "note": "Identity of the site. The target has its own."
+    },
+    {
+      "id": "apd.provider",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "ProviderMachine",
+      "scope": "site",
+      "import": "never",
+      "target": "settings.json",
+      "note": "SMS Provider FQDN. Also listed in site.json providers."
+    },
+    {
+      "id": "apd.sql-server",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "DiscoverySqlServer",
+      "scope": "site",
+      "import": "never",
+      "target": "settings.json"
+    },
+    {
+      "id": "apd.sql-database",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "DiscoverySqlDatabase",
+      "scope": "site",
+      "import": "never",
+      "target": "settings.json"
+    },
+    {
+      "id": "apd.share-root",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "FileShareRoot",
+      "scope": "site",
+      "import": "off",
+      "target": "settings.json",
+      "note": "Differs by environment. Shown with its value on import."
+    },
+    {
+      "id": "apd.content-distribution",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "ContentDistribution",
+      "scope": "site",
+      "import": "on",
+      "target": "settings.json",
+      "note": "DP group and test collection names only."
+    },
+    {
+      "id": "apd.distribution-overrides",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "DistributionOverrides",
+      "scope": "site",
+      "import": "on",
+      "target": "settings.json",
+      "note": "Names only."
+    },
+    {
+      "id": "apd.destinations",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "OneClick.Destinations",
+      "scope": "site",
+      "import": "on",
+      "target": "settings.json",
+      "note": "The ConfigMgr flag depends on the site."
+    },
+    {
+      "id": "apd.wsus",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "Wsus",
+      "scope": "site",
+      "import": "off",
+      "target": "settings.json"
+    },
+    {
+      "id": "apd.intune-tenant",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "Intune.TenantId",
+      "scope": "global",
+      "import": "off",
+      "target": null,
+      "note": "The tenant is a separate axis from the site."
+    },
+    {
+      "id": "apd.intune-client",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "Intune.ClientId",
+      "scope": "global",
+      "import": "off",
+      "target": null
+    },
+    {
+      "id": "apd.app-state-current",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "AppStates.CurrentVersion",
+      "scope": "site",
+      "import": "never",
+      "target": "state\\app-state.json",
+      "note": "ConfigMgr version of each application."
+    },
+    {
+      "id": "apd.app-state-published",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "AppStates.Published",
+      "scope": "site",
+      "import": "never",
+      "target": "state\\app-state.json"
+    },
+    {
+      "id": "apd.app-state-latest",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "AppStates.LatestVersion",
+      "scope": "global",
+      "import": "never",
+      "target": null
+    },
+    {
+      "id": "apd.one-click",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "OneClick (tracked applications, cadence, action)",
+      "scope": "global",
+      "import": "on",
+      "target": null
+    },
+    {
+      "id": "apd.app-settings",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "InstallerSettingValues, DeploymentConditions, CommandOverrides, LocalSourceFolders, HiddenApplications",
+      "scope": "global",
+      "import": "on",
+      "target": null,
+      "note": "Per application, not per site."
+    },
+    {
+      "id": "apd.packaging-options",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "Packaging options (content layout, runtimes, content fallback, slow network, title modes, supersedence)",
+      "scope": "global",
+      "import": "on",
+      "target": null
+    },
+    {
+      "id": "apd.hygiene-options",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "Site Hygiene options (areas, pause, thresholds, alerts)",
+      "scope": "site",
+      "import": "on",
+      "target": "settings.json"
+    },
+    {
+      "id": "apd.ui",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "Theme, window, sidebar, page filters",
+      "scope": "global",
+      "import": "never",
+      "target": null,
+      "note": "A page ignores an unknown folder in a filter."
+    },
+    {
+      "id": "apd.check-cm-result",
+      "app": "apd",
+      "kind": "file",
+      "location": "Legacy\\CheckConfigMgrResult.csv and .json",
+      "key": "CheckConfigMgrResult",
+      "scope": "site",
+      "import": "never",
+      "target": "results\\CheckConfigMgrResult.csv"
+    },
+    {
+      "id": "apd.inventory",
+      "app": "apd",
+      "kind": "table",
+      "location": "Legacy\\history.db",
+      "key": "environment_inventory",
+      "scope": "site",
+      "import": "never",
+      "target": "results\\history.db",
+      "note": "Rows split by environment_key."
+    },
+    {
+      "id": "apd.site-operations",
+      "app": "apd",
+      "kind": "table",
+      "location": "Legacy\\history.db",
+      "key": "SiteOperations",
+      "scope": "site",
+      "import": "never",
+      "target": "results\\history.db",
+      "note": "Needs a site column."
+    },
+    {
+      "id": "apd.deployments",
+      "app": "apd",
+      "kind": "folder",
+      "location": "Root\\Deployments",
+      "key": "Rings, Rings\\runs, deployment-audit",
+      "scope": "site",
+      "import": "never",
+      "target": "deployments\\"
+    },
+    {
+      "id": "apd.deployment-templates",
+      "app": "apd",
+      "kind": "folder",
+      "location": "Root\\Deployments",
+      "key": "Templates",
+      "scope": "global",
+      "import": "on",
+      "target": null
+    },
+    {
+      "id": "apd.hygiene-stores",
+      "app": "apd",
+      "kind": "folder",
+      "location": "Root\\SiteHygiene",
+      "key": "suppressions.json, last-scan.json, metrics, audit",
+      "scope": "site",
+      "import": "never",
+      "target": "hygiene\\",
+      "note": "Object IDs of one site."
+    },
+    {
+      "id": "apd.dpcontent",
+      "app": "apd",
+      "kind": "folder",
+      "location": "Root\\DpContent",
+      "key": "reports and audit",
+      "scope": "site",
+      "import": "never",
+      "target": "dpcontent\\"
+    },
+    {
+      "id": "apd.pivots",
+      "app": "apd",
+      "kind": "folder",
+      "location": "Root\\Pivots",
+      "key": "sessions",
+      "scope": "site",
+      "import": "never",
+      "target": "pivots\\sessions\\"
+    },
+    {
+      "id": "apd.maintenance",
+      "app": "apd",
+      "kind": "folder",
+      "location": "Root\\Maintenance",
+      "key": "reports and audit",
+      "scope": "site",
+      "import": "never",
+      "target": "maintenance\\"
+    },
+    {
+      "id": "apd.collections",
+      "app": "apd",
+      "kind": "folder",
+      "location": "Root\\Collections",
+      "key": "reports and audit",
+      "scope": "site",
+      "import": "never",
+      "target": "collections\\"
+    },
+    {
+      "id": "apd.cve-cache",
+      "app": "apd",
+      "kind": "folder",
+      "location": "Root\\Vulnerability",
+      "key": "CVE cache and reports",
+      "scope": "global",
+      "import": "never",
+      "target": null
+    },
+    {
+      "id": "apd.monitor-config",
+      "app": "apd",
+      "kind": "file",
+      "location": "Root\\monitor-config.json",
+      "key": "SiteCode",
+      "scope": "site",
+      "import": "never",
+      "target": "settings.json"
+    },
+    {
+      "id": "apd.templates",
+      "app": "apd",
+      "kind": "folder",
+      "location": "Root",
+      "key": "Query, condition and maintenance templates, user definitions, icons",
+      "scope": "global",
+      "import": "on",
+      "target": null
+    },
+    {
+      "id": "apd.logs",
+      "app": "apd",
+      "kind": "folder",
+      "location": "Legacy\\Logs",
+      "key": "session logs",
+      "scope": "global",
+      "import": "never",
+      "target": null,
+      "note": "Each line carries the site name."
+    },
+    {
+      "id": "apd.github-token",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "GitHubTokenProtected",
+      "scope": "secret",
+      "import": "never",
+      "target": null
+    },
+    {
+      "id": "apd.intune-secret",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "Intune.ClientSecretProtected",
+      "scope": "secret",
+      "import": "never",
+      "target": null
+    },
+    {
+      "id": "apd.feed-credentials",
+      "app": "apd",
+      "kind": "file",
+      "location": "Root\\FeedCredentials.json",
+      "key": "FeedCredentials",
+      "scope": "secret",
+      "import": "never",
+      "target": null
+    },
+    {
+      "id": "apd.nvd-key",
+      "app": "apd",
+      "kind": "setting",
+      "location": "settings.json",
+      "key": "NVD API key",
+      "scope": "secret",
+      "import": "never",
+      "target": null
+    },
+    {
+      "id": "ps.site-fields",
+      "app": "powershell",
+      "kind": "setting",
+      "location": "AppPackager.preferences.json",
+      "key": "SiteCode, SMSProvider, SQL server",
+      "scope": "site",
+      "import": "never",
+      "target": "settings.json"
+    },
+    {
+      "id": "ps.site-names",
+      "app": "powershell",
+      "kind": "setting",
+      "location": "AppPackager.preferences.json",
+      "key": "DP group, test collection, WSUS server",
+      "scope": "site",
+      "import": "on",
+      "target": "settings.json"
+    },
+    {
+      "id": "ps.share-root",
+      "app": "powershell",
+      "kind": "setting",
+      "location": "AppPackager.preferences.json",
+      "key": "Content share root",
+      "scope": "site",
+      "import": "off",
+      "target": "settings.json"
+    },
+    {
+      "id": "ps.packager-options",
+      "app": "powershell",
+      "kind": "file",
+      "location": "Packagers\\packager-preferences.json",
+      "key": "per-packager options",
+      "scope": "global",
+      "import": "on",
+      "target": null
+    },
+    {
+      "id": "ps.history",
+      "app": "powershell",
+      "kind": "file",
+      "location": "%LOCALAPPDATA%\\AppPackager\\app-history.json",
+      "key": "history and versions",
+      "scope": "global",
+      "import": "never",
+      "target": null
+    },
+    {
+      "id": "ps.last-cm-version",
+      "app": "powershell",
+      "kind": "file",
+      "location": "%LOCALAPPDATA%\\AppPackager\\app-history.json",
+      "key": "LastCmVersion",
+      "scope": "site",
+      "import": "never",
+      "target": "state\\app-state.json"
+    },
+    {
+      "id": "ps.check-cm-result",
+      "app": "powershell",
+      "kind": "file",
+      "location": "%LOCALAPPDATA%\\AppPackager\\CheckConfigMgrResult.csv and .json",
+      "key": "CheckConfigMgrResult",
+      "scope": "site",
+      "import": "never",
+      "target": "results\\CheckConfigMgrResult.csv"
+    },
+    {
+      "id": "ps.version-monitor",
+      "app": "powershell",
+      "kind": "file",
+      "location": "VersionMonitor\\monitor-config.json",
+      "key": "MECM.SiteCode, ServerFQDN",
+      "scope": "site",
+      "import": "never",
+      "target": "settings.json"
+    },
+    {
+      "id": "ps.cve-cache",
+      "app": "powershell",
+      "kind": "folder",
+      "location": "%LOCALAPPDATA%\\AppPackager",
+      "key": "kev-catalog.json, vuln-results, vuln-products",
+      "scope": "global",
+      "import": "never",
+      "target": null
+    },
+    {
+      "id": "ps.workbench",
+      "app": "powershell",
+      "kind": "folder",
+      "location": "%LOCALAPPDATA%\\AppPackagerData\\Workbench",
+      "key": "apps, profiles, runs",
+      "scope": "global",
+      "import": "on",
+      "target": null,
+      "note": "Unverified whether profiles hold site data."
+    },
+    {
+      "id": "ps.logs",
+      "app": "powershell",
+      "kind": "folder",
+      "location": "Logs",
+      "key": "logs and reports",
+      "scope": "global",
+      "import": "never",
+      "target": null
+    },
+    {
+      "id": "ps.secrets-dpapi",
+      "app": "powershell",
+      "kind": "setting",
+      "location": "AppPackager.preferences.json",
+      "key": "GitHub token, Intune client secret, NVD key (DPAPI)",
+      "scope": "secret",
+      "import": "never",
+      "target": null
+    },
+    {
+      "id": "ps.teamviewer-token",
+      "app": "powershell",
+      "kind": "file",
+      "location": "Packagers\\teamviewer-host-config.json",
+      "key": "ApiToken",
+      "scope": "secret",
+      "import": "never",
+      "target": null,
+      "note": "Plain text today."
+    },
+    {
+      "id": "ps.monitor-secrets",
+      "app": "powershell",
+      "kind": "file",
+      "location": "VersionMonitor\\monitor-config.json",
+      "key": "NVD key, webhook URL",
+      "scope": "secret",
+      "import": "never",
+      "target": null,
+      "note": "Plain text today."
+    },
+    {
+      "id": "suite.launcher-site",
+      "app": "suite-launcher",
+      "kind": "setting",
+      "location": "suite.settings.json",
+      "key": "SiteCode, SMSProvider",
+      "scope": "site",
+      "import": "never",
+      "target": "settings.json"
+    },
+    {
+      "id": "suite.launcher-ui",
+      "app": "suite-launcher",
+      "kind": "setting",
+      "location": "suite.settings.json",
+      "key": "DarkMode, ToolsRoot, window state, update-check.json",
+      "scope": "global",
+      "import": "never",
+      "target": null
+    },
+    {
+      "id": "suite.site-hygiene",
+      "app": "site-hygiene",
+      "kind": "folder",
+      "location": "site-hygiene",
+      "key": "prefs SiteCode SMSProvider SQLServer, lastscan.json, suppressions.json, History, Reports",
+      "scope": "site",
+      "import": "never",
+      "target": "tools\\site-hygiene\\"
+    },
+    {
+      "id": "suite.deployment-helper",
+      "app": "deployment-helper",
+      "kind": "folder",
+      "location": "deployment-helper",
+      "key": "prefs, Rings, Rings\\runs, Rollouts, deployment-audit.jsonl",
+      "scope": "site",
+      "import": "never",
+      "target": "tools\\deployment-helper\\"
+    },
+    {
+      "id": "suite.deployment-templates",
+      "app": "deployment-helper",
+      "kind": "folder",
+      "location": "deployment-helper\\Templates",
+      "key": "settings templates",
+      "scope": "global",
+      "import": "on",
+      "target": null
+    },
+    {
+      "id": "suite.update-planner-waves",
+      "app": "update-planner",
+      "kind": "setting",
+      "location": "update-planner prefs",
+      "key": "Waves (CollectionID|Name)",
+      "scope": "site",
+      "import": "on",
+      "target": "tools\\update-planner\\",
+      "note": "Names are copied. IDs are never copied."
+    },
+    {
+      "id": "suite.update-planner-reports",
+      "app": "update-planner",
+      "kind": "folder",
+      "location": "update-planner",
+      "key": "Reports, update-planner-actions.jsonl",
+      "scope": "site",
+      "import": "never",
+      "target": "tools\\update-planner\\"
+    },
+    {
+      "id": "suite.update-planner-prefs",
+      "app": "update-planner",
+      "kind": "setting",
+      "location": "update-planner prefs",
+      "key": "spacing and severity",
+      "scope": "global",
+      "import": "on",
+      "target": null
+    },
+    {
+      "id": "suite.device-inspector",
+      "app": "device-inspector",
+      "kind": "folder",
+      "location": "device-inspector",
+      "key": "prefs SiteCode SMSProvider LastDevice, logs, reports",
+      "scope": "site",
+      "import": "never",
+      "target": "tools\\device-inspector\\"
+    },
+    {
+      "id": "suite.collection-manager",
+      "app": "collection-manager",
+      "kind": "folder",
+      "location": "collection-manager",
+      "key": "prefs, exports in Reports, logs",
+      "scope": "site",
+      "import": "never",
+      "target": "tools\\collection-manager\\"
+    },
+    {
+      "id": "suite.collection-and-compliance-manager",
+      "app": "collection-and-compliance-manager",
+      "kind": "folder",
+      "location": "collection-and-compliance-manager",
+      "key": "prefs, exports in Reports, logs",
+      "scope": "site",
+      "import": "never",
+      "target": "tools\\collection-and-compliance-manager\\"
+    },
+    {
+      "id": "suite.maintenance-window-manager",
+      "app": "maintenance-window-manager",
+      "kind": "folder",
+      "location": "maintenance-window-manager",
+      "key": "prefs, exports in Reports, logs",
+      "scope": "site",
+      "import": "never",
+      "target": "tools\\maintenance-window-manager\\"
+    },
+    {
+      "id": "suite.dp-content-manager",
+      "app": "dp-content-manager",
+      "kind": "folder",
+      "location": "dp-content-manager",
+      "key": "prefs, exports in Reports, logs",
+      "scope": "site",
+      "import": "never",
+      "target": "tools\\dp-content-manager\\"
+    },
+    {
+      "id": "suite.pivots-sessions",
+      "app": "pivots-and-scripts",
+      "kind": "folder",
+      "location": "pivots-and-scripts\\Sessions",
+      "key": "<guid>.json",
+      "scope": "site",
+      "import": "never",
+      "target": "tools\\pivots-and-scripts\\sessions\\"
+    },
+    {
+      "id": "suite.pivots-library",
+      "app": "pivots-and-scripts",
+      "kind": "folder",
+      "location": "pivots-and-scripts\\Library",
+      "key": "Library",
+      "scope": "global",
+      "import": "never",
+      "target": null
+    },
+    {
+      "id": "suite.handoff-ring-plan",
+      "app": "suite",
+      "kind": "file",
+      "location": "handoff",
+      "key": "SuiteRingPlan",
+      "scope": "site",
+      "import": "never",
+      "target": "handoff\\ring-plan.json"
+    },
+    {
+      "id": "suite.handoff-check-cm",
+      "app": "suite",
+      "kind": "file",
+      "location": "handoff",
+      "key": "CheckConfigMgrResult",
+      "scope": "site",
+      "import": "never",
+      "target": "results\\CheckConfigMgrResult.csv"
+    },
+    {
+      "id": "suite.handoff-stage-manifest",
+      "app": "suite",
+      "kind": "file",
+      "location": "handoff",
+      "key": "stage-manifest.json",
+      "scope": "global",
+      "import": "never",
+      "target": null
+    },
+    {
+      "id": "suite.detection-installer",
+      "app": "detection-tester",
+      "kind": "folder",
+      "location": "detection-tester, installer-analysis",
+      "key": "prefs and reports",
+      "scope": "global",
+      "import": "never",
+      "target": null,
+      "note": "No site data."
+    }
+  ]
+}
