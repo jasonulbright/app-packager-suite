@@ -46,7 +46,6 @@ param(
 )
 
 Set-StrictMode -Version Latest
-try { Start-Transcript -Path (Join-Path $env:TEMP ('ud-dbg-' + $Mode + '.log')) -Force | Out-Null } catch { $null = $_ }
 $ErrorActionPreference = 'Stop'
 
 function Get-Sha256 {
@@ -99,26 +98,29 @@ if ($Mode -eq 'Place') {
     foreach ($k in $old.Keys) { $new[$k] = $old[$k] }
     $placed = 0; $same = 0; $updated = 0; $kept = 0
 
-    foreach ($file in @(Get-ChildItem -LiteralPath $defaultsRoot -Recurse -File -Force)) {
-        $relative = $file.FullName.Substring($defaultsRoot.Length).TrimStart('\')
+    # EnumerateFiles returns paths that start with $defaultsRoot exactly. The temp
+    # folder of a runner is an 8.3 short path, and Get-ChildItem returns long
+    # paths below it, so cutting the root off a long path gives a wrong result.
+    foreach ($sourcePath in @([System.IO.Directory]::EnumerateFiles($defaultsRoot, '*', [System.IO.SearchOption]::AllDirectories))) {
+        $relative = $sourcePath.Substring($defaultsRoot.Length).TrimStart([char]92)
         $target = Join-Path $root $relative
         try {
-            $shipped = Get-Sha256 -Path $file.FullName
+            $shipped = Get-Sha256 -Path $sourcePath
             if (-not (Test-Path -LiteralPath $target)) {
                 $parent = Split-Path -Parent $target
                 if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
-                Copy-Item -LiteralPath $file.FullName -Destination $target
+                Copy-Item -LiteralPath $sourcePath -Destination $target
                 $placed++
             }
             else {
                 $current = Get-Sha256 -Path $target
                 if ($current -eq $shipped) { $same++ }
                 elseif ($old.ContainsKey($relative) -and $old[$relative] -eq $current) {
-                    Copy-Item -LiteralPath $file.FullName -Destination $target -Force
+                    Copy-Item -LiteralPath $sourcePath -Destination $target -Force
                     $updated++
                 }
                 else {
-                    Copy-Item -LiteralPath $file.FullName -Destination ($target + '.new') -Force
+                    Copy-Item -LiteralPath $sourcePath -Destination ($target + '.new') -Force
                     $kept++
                     Write-Host ('Kept your edited {0}; the new default is {0}.new' -f $relative)
                 }

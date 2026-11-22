@@ -279,7 +279,6 @@ Describe 'Suite installer data safety: retire twice, conflicts, edited templates
 
         # Edited and added templates, then the upgrade to a payload with new defaults (A-3).
         $script:tplDir = Join-Path $script:inst 'collection-manager\Templates'
-        if (-not (Test-Path -LiteralPath (Join-Path $script:tplDir 'a.json'))) { throw ('DBG listing: ' + ((Get-ChildItem $script:inst -Recurse -File | ForEach-Object FullName) -join ' ; ') + ' LOGS: ' + ((Get-ChildItem $env:TEMP -Filter 'ud-dbg-*.log' | ForEach-Object { Get-Content $_.FullName -Raw }) -join ' ## ')) }
         $script:templatesAfterFirstInstall = @((Get-Content -LiteralPath (Join-Path $script:tplDir 'a.json') -Raw), (Get-Content -LiteralPath (Join-Path $script:tplDir 'b.json') -Raw))
         'USER EDIT' | Set-Content -LiteralPath (Join-Path $script:tplDir 'b.json') -Encoding ASCII
         'user template' | Set-Content -LiteralPath (Join-Path $script:tplDir 'mine.json') -Encoding ASCII
