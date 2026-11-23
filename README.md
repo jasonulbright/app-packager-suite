@@ -38,6 +38,8 @@ variable; the SMS Provider computer can be set with a parameter or
 
 ![Suite launcher](docs/launcher.png)
 
+The image shows two fictional sites, AB1 and CD2. `tools\Capture-Launcher.ps1` makes it on a lab computer; run it through `tools\Run-VisibleProbe.ps1`, which holds the capture lock.
+
 `start-suite.ps1` is a thin WPF shell: one tile per installed suite
 tool, discovered as sibling folders of this repository (override the
 root in `suite.settings.json`), with each tool's version read from its
