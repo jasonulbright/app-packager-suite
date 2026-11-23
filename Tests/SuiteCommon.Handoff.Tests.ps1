@@ -122,7 +122,7 @@ Context 'Read-SuiteHandoff' {
         [IO.File]::WriteAllText($script:Path, $json)
         $r = Read-SuiteHandoff -Path $script:Path -NowUtc $script:Now
         $r.SiteCode | Should -Be 'AB1'
-        $r.AgeText | Should -Be 'just now'
+        $r.AgeText | Should -Be 'under 1 minute old'
     }
     It 'reports a missing file' {
         $r = Read-SuiteHandoff -Path (Join-Path $TestDrive 'nope.json')
@@ -203,7 +203,7 @@ Context 'Read-SuiteHandoff' {
 
 Context 'Age text and stale limit' {
     It 'formats the age' {
-        Format-SuiteAge -Age ([timespan]::FromSeconds(10)) | Should -Be 'just now'
+        Format-SuiteAge -Age ([timespan]::FromSeconds(10)) | Should -Be 'under 1 minute old'
         Format-SuiteAge -Age ([timespan]::FromMinutes(1)) | Should -Be '1 minute old'
         Format-SuiteAge -Age ([timespan]::FromMinutes(59)) | Should -Be '59 minutes old'
         Format-SuiteAge -Age ([timespan]::FromMinutes(60)) | Should -Be '1 hour old'

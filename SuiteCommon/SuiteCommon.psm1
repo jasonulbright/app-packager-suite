@@ -1316,14 +1316,14 @@ function ConvertTo-SuiteStaleHours {
 function Format-SuiteAge {
     <#
     .SYNOPSIS
-        Returns the age as text: "just now", "5 minutes old", "3 hours old", "2 days old". A negative age gives "dated in the future".
+        Returns the age as text: "under 1 minute old", "5 minutes old", "3 hours old", "2 days old". A negative age gives "dated in the future".
     #>
     [CmdletBinding()]
     [OutputType([string])]
     param([Parameter(Mandatory)][timespan]$Age)
     if ($Age.TotalSeconds -lt -60) { return 'dated in the future' }
     $minutes = [math]::Floor($Age.TotalMinutes)
-    if ($minutes -lt 1) { return 'just now' }
+    if ($minutes -lt 1) { return 'under 1 minute old' }
     if ($minutes -lt 60) { return ('{0} minute{1} old' -f $minutes, $(if ($minutes -eq 1) { '' } else { 's' })) }
     $hours = [math]::Floor($Age.TotalHours)
     if ($hours -lt 48) { return ('{0} hour{1} old' -f $hours, $(if ($hours -eq 1) { '' } else { 's' })) }
@@ -1353,9 +1353,22 @@ function Get-SuiteDataAge {
     }
 }
 
+function ConvertFrom-SuiteHandoffJson {
+    # Parses JSON text. PowerShell 7 turns an ISO date string into a [datetime]. -DateKind String (7.5 and later) keeps the text.
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Text)
+    if ($null -eq $script:SuiteJsonHasDateKind) { $script:SuiteJsonHasDateKind = [bool](Get-Command ConvertFrom-Json).Parameters.ContainsKey('DateKind') }
+    if ($script:SuiteJsonHasDateKind) { return ($Text | ConvertFrom-Json -DateKind String -ErrorAction Stop) }
+    return ($Text | ConvertFrom-Json -ErrorAction Stop)
+}
+
 function ConvertFrom-SuiteUtcText {
-    # Parses yyyy-MM-ddTHH:mm:ssZ. Returns a UTC [datetime] or $null.
-    param([AllowNull()][string]$Text)
+    # Parses yyyy-MM-ddTHH:mm:ssZ. Returns a UTC [datetime] or $null. A [datetime] value (PowerShell 7 parsed it) counts when its kind is known.
+    param($Value)
+    if ($Value -is [datetime]) {
+        if ($Value.Kind -eq [DateTimeKind]::Unspecified) { return $null }
+        return $Value.ToUniversalTime()
+    }
+    $Text = [string]$Value
     if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
     $d = [datetime]::MinValue
     $styles = [Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal
@@ -1366,7 +1379,7 @@ function ConvertFrom-SuiteUtcText {
 function Read-SuiteHandoff {
     <#
     .SYNOPSIS
-        Reads and checks a handoff file. Returns the header facts, the age and the parsed data. Never throws.
+        Reads and checks a handoff file. Returns the header fields, the age and the parsed data. Never throws.
     .DESCRIPTION
         Status is Ok, Missing, Unreadable, Malformed, WrongKind, TooNew or NoDate. Only Ok carries Data. A file with a
         schema version above -KnownSchemaVersion is refused (TooNew) and the message names the file and both versions.
@@ -1395,7 +1408,7 @@ function Read-SuiteHandoff {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { $r.Message = ('The file {0} does not exist.' -f $r.FileName); return $r }
     try { $raw = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8) }
     catch { $r.Status = 'Unreadable'; $r.Message = ('The file {0} could not be read.' -f $r.FileName); return $r }
-    try { $data = $raw | ConvertFrom-Json -ErrorAction Stop }
+    try { $data = ConvertFrom-SuiteHandoffJson -Text $raw }
     catch { $r.Status = 'Malformed'; $r.Message = ('The file {0} is not valid JSON.' -f $r.FileName); return $r }
     if ($null -eq $data -or $data -is [System.Array] -or $data -is [string] -or $data -is [ValueType]) {
         $r.Status = 'Malformed'; $r.Message = ('The file {0} is not a JSON object.' -f $r.FileName); return $r
@@ -1437,7 +1450,10 @@ function Read-SuiteHandoff {
         return $r
     }
     $created = $null
-    foreach ($n in 'createdUtc', 'CreatedUtc') { $p = $data.PSObject.Properties[$n]; if ($p -and $p.Value) { $created = ConvertFrom-SuiteUtcText -Text ([string]$p.Value); break } }
+    foreach ($n in 'createdUtc', 'CreatedUtc') {
+        $p = $data.PSObject.Properties[$n]
+        if ($p -and $p.Value) { $created = ConvertFrom-SuiteUtcText -Value $p.Value; break }
+    }
     if ($null -eq $created) {
         $r.Status = 'NoDate'
         $r.Message = ('The file {0} has no valid creation time, so its age is not known.' -f $r.FileName)
