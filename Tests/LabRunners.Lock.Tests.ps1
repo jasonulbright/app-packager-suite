@@ -31,7 +31,10 @@ Describe 'Run-VisibleProbe lab lock' {
     }
 
     It 'treats a lock as stale only after 30 minutes with no running owner, reports a removal and refreshes the lock while the run goes' {
-        $script:Text | Should -Match '-gt 30 -and'
+        $lib = Get-Content -LiteralPath (Join-Path (Split-Path -Parent $PSScriptRoot) 'tools\LabHarness.Common.ps1') -Raw
+        $lib | Should -Match '-gt \$StaleMinutes -and'
+        $lib | Should -Match '\$StaleMinutes = 30'
+        $script:Text | Should -Match 'Get-LockDecision'
         $script:Text | Should -Not -Match 'TotalMinutes -gt 10'
         $script:Text | Should -Match 'Get-Process -Id'
         $script:Text | Should -Match 'the stale lab lock'
@@ -81,15 +84,13 @@ Describe 'Run-VisibleProbe stray check and the watchdog' {
 
 Describe 'Run-VisibleProbe lock format' {
     BeforeAll {
-        # The pattern of the runner: owner|pid|start time. Read it from the script, so a change of the format fails here.
-        $m = [regex]::Match($script:Text, "\`$text -notmatch '([^']+)'")
-        $script:Pattern = $m.Groups[1].Value
+        # The format check lives in the shared library: owner|pid|start time. The runner decides with Get-LockDecision.
+        . (Join-Path (Split-Path -Parent $PSScriptRoot) 'tools\LabHarness.Common.ps1')
     }
 
     It 'knows the pattern of its own lock text' {
-        $script:Pattern | Should -Not -BeNullOrEmpty
-        'dt-f|22440|2026-11-15T01:27:34' | Should -Match $script:Pattern
-        'pester|1|2026-11-15T01:27:34' | Should -Match $script:Pattern
+        ConvertFrom-LockText -Text 'dt-f|22440|2026-11-15T01:27:34' | Should -Not -BeNullOrEmpty
+        ConvertFrom-LockText -Text 'pester|1|2026-11-15T01:27:34' | Should -Not -BeNullOrEmpty
     }
 
     It 'treats every other lock text as unknown, never as free' -ForEach @(
@@ -100,16 +101,59 @@ Describe 'Run-VisibleProbe lock format' {
         @{ Text = 'dt-f|abc|2026-11-15T01:27:34' }
         @{ Text = '|22440|2026-11-15T01:27:34' }
     ) {
-        $Text | Should -Not -Match $script:Pattern
+        Get-LockDecision -Text $Text -AgeMinutes 9999 -AliveLab $false -AliveHere $false | Should -Be 'unknown'
     }
 
     It 'blocks on an unknown lock: it reports it, waits, fails with nothing started at the end of the wait and does not remove the lock' {
-        $script:Text.Contains("'unknown: ' + `$text") | Should -BeTrue
-        $script:Text.Contains("`$got -like 'unknown:*'") | Should -BeTrue
+        $script:Text.Contains("`$decision -eq 'unknown'") | Should -BeTrue
         $script:Text.Contains('Nothing was started') | Should -BeTrue
         $script:Text.Contains('Waiting; the lock is not removed') | Should -BeTrue
-        $unknown = $script:Text.IndexOf("'unknown: ' + `$text")
-        $held = $script:Text.IndexOf("'held: ' + ")
-        $unknown | Should -BeLessThan $held -Because 'the format check comes before the stale check'
+        # Only the stale branch removes the lock.
+        $stale = $script:Text.IndexOf("`$decision -eq 'stale'")
+        $remove = $script:Text.IndexOf('Remove-Item -LiteralPath $path -Force', $script:Text.IndexOf('$got -like'))
+        $remove | Should -BeGreaterThan $stale
+    }
+}
+Describe 'Run-VisibleProbe hardening (Q-118)' {
+    It 'creates the lock file with its text in one step, so a waiting run never reads an empty lock' {
+        $script:Text | Should -Match 'New-Item -ItemType File -Path \$path -Value \$token'
+    }
+
+    It 'writes who holds the lock to the output of a waiting run' {
+        $script:Text | Should -Match 'Format-LockHolder'
+        $script:Text | Should -Match 'LOCK: waiting'
+    }
+
+    It 'sweeps every ledger under C:\guide after it took the lock and before it copies the repo' {
+        $lock = $script:Text.IndexOf('$haveLock = $true')
+        $sweep = $script:Text.IndexOf('Get-LedgerPath')
+        $copy = $script:Text.IndexOf('Copy-Item -LiteralPath $i.FullName')
+        $sweep | Should -BeGreaterThan $lock
+        $copy | Should -BeGreaterThan $sweep
+    }
+
+    It 'records a HARNESS snapshot at the start and at the end of the run and refuses to start on a desktop with stray app windows' {
+        $script:Text | Should -Match "Write-RunSnapshot -Phase 'start'"
+        $script:Text | Should -Match "Write-RunSnapshot -Phase 'end'"
+        $script:Text | Should -Match 'FAIL: preflight'
+        $cmd = $script:Text.IndexOf('& { {CMD} }')
+        $script:Text.IndexOf("Phase 'start'") | Should -BeLessThan $cmd
+        $script:Text.IndexOf('Test-DesktopClean -Close') | Should -BeLessThan $cmd
+    }
+
+    It 'closes the windows that the run left open and reports them' {
+        $script:Text | Should -Match 'WARN: leak'
+        $script:Text | Should -Match 'Close-AppWindow'
+    }
+
+    It 'ends the run by ledger in the finally block before it releases the lock, and cleans up only a run that took the lock' {
+        $fin = @($script:Ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.TryStatementAst] -and $n.Finally -and $n.Finally.Extent.Text -match 'Releasing the lab lock' }, $true))
+        $fin.Count | Should -Be 1
+        $t = $fin[0].Finally.Extent.Text
+        $t | Should -Match 'if \(\$haveLock\)'
+        $t.IndexOf("'All'") | Should -BeGreaterThan 0
+        $t.IndexOf("'All'") | Should -BeLessThan $t.IndexOf('Releasing the lab lock')
+        $t.IndexOf('Stop-ScheduledTask') | Should -BeGreaterThan 0
+        $t.IndexOf('Unregister-ScheduledTask') | Should -BeLessThan $t.IndexOf('Releasing the lab lock')
     }
 }
