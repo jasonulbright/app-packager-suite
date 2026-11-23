@@ -1,0 +1,176 @@
+<#
+.SYNOPSIS
+    Shared logic of the CLIENT01 real-window harness (Q-118, D-16): lock decisions, ledger sweep, stray-window check, run snapshot.
+
+.DESCRIPTION
+    Dot-sourced by tools\Run-VisibleProbe.ps1 on the dev PC (lock decisions) and copied to the lab computer, where the run wrapper
+    dot-sources it inside the interactive labadmin session (window checks and snapshot). Pure functions take plain records, so Pester
+    tests cover them without a window. Nothing here selects a process by command line, signs out, locks or disconnects a session.
+    The file is plain ASCII.
+#>
+
+# ---- Lock (C:\guide\capture.lock, text owner|pid|start time) ----
+
+# Parses the lock text. Returns $null when the text is not owner|pid|start time.
+function ConvertFrom-LockText {
+    param([string]$Text)
+    $t = ([string]$Text).Trim()
+    if ($t -notmatch '^(?<owner>[^|\s][^|]*)\|(?<pid>\d+)\|(?<start>\d{4}-\d{2}-\d{2}T.*)$') { return $null }
+    [pscustomobject]@{ Owner = $Matches['owner']; ProcessId = [int]$Matches['pid']; Start = $Matches['start']; Text = $t }
+}
+
+# Decides what a waiting run does with a lock it found. unknown: another format, never removed. stale: older than StaleMinutes AND
+# the owner pid runs neither on the lab computer nor on the dev PC. held: wait.
+function Get-LockDecision {
+    param([string]$Text, [int]$AgeMinutes, [bool]$AliveLab, [bool]$AliveHere, [int]$StaleMinutes = 30)
+    if (-not (ConvertFrom-LockText -Text $Text)) { return 'unknown' }
+    if ($AgeMinutes -gt $StaleMinutes -and -not $AliveLab -and -not $AliveHere) { return 'stale' }
+    'held'
+}
+
+# One line that says who holds the lock and for how long, for the log of a waiting run.
+function Format-LockHolder {
+    param([string]$Text, [int]$AgeMinutes)
+    $l = ConvertFrom-LockText -Text $Text
+    if (-not $l) { return ('lock holder unknown (text: ' + ([string]$Text).Trim() + ')') }
+    'lock held by {0} (pid {1}, since {2}, last refresh {3} min ago)' -f $l.Owner, $l.ProcessId, $l.Start, $AgeMinutes
+}
+
+# ---- Ledger (one line per process of a run: process id|start ticks) ----
+
+function Read-LedgerEntry {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) { return @() }
+    @(Get-Content -LiteralPath $Path | Where-Object { $_ -match '^\d+\|\d+$' } | ForEach-Object { $a = $_ -split '\|'; [pscustomobject]@{ Id = [int]$a[0]; Ticks = [long]$a[1] } })
+}
+
+# Stops the processes of one ledger by process id and start time, and their descendants (by ParentProcessId). A live process with the
+# id but another start time is a different process (the id was reused): it is not touched. Returns one text line per stopped process.
+function Stop-LedgerProcess {
+    param([Parameter(Mandatory)][string]$Ledger)
+    $entries = @(Read-LedgerEntry -Path $Ledger)
+    $done = New-Object System.Collections.Generic.List[string]
+    function Stop-Below([int]$Id, [datetime]$Since) {
+        foreach ($c in @(Get-CimInstance Win32_Process -Filter ('ParentProcessId=' + $Id))) {
+            if ($c.CreationDate -lt $Since.AddSeconds(-2)) { continue }
+            Stop-Below ([int]$c.ProcessId) $c.CreationDate
+            Stop-Process -Id $c.ProcessId -Force -ErrorAction SilentlyContinue
+            $done.Add(('pid {0}: {1}' -f $c.ProcessId, $c.Name))
+        }
+    }
+    foreach ($e in $entries) {
+        $p = Get-Process -Id $e.Id -ErrorAction SilentlyContinue
+        # A live process with this id and another start time is a different process: touch neither it nor anything below it.
+        if ($p -and ($p.Id -eq $PID -or $p.StartTime.Ticks -ne $e.Ticks)) { continue }
+        # The root may be gone while its children still run (a killed wrapper): the children are found by ParentProcessId and start time.
+        Stop-Below $e.Id (New-Object DateTime $e.Ticks)
+        if ($p) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue; $done.Add(('pid {0}: {1}' -f $e.Id, $p.ProcessName)) }
+    }
+    $done
+}
+
+# Finds every ledger that a run of the harness or of a guide capture left under the root: <root>\*\.pids and <root>\*\ui\run.pids.
+function Get-LedgerPath {
+    param([string]$Root = 'C:\guide')
+    if (-not (Test-Path -LiteralPath $Root)) { return @() }
+    @(Get-ChildItem -LiteralPath $Root -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+            foreach ($p in @((Join-Path $_.FullName '.pids'), (Join-Path $_.FullName 'ui\run.pids'))) { if (Test-Path -LiteralPath $p) { $p } }
+        })
+}
+
+# ---- Application windows ----
+
+# True for a window that an app of the suite or its test harness opens: a WPF window, a WinForms window, or a dialog box (#32770)
+# of a PowerShell process. Console windows, the shell and other programs of the user are never selected.
+function Select-AppWindow {
+    param([Parameter(ValueFromPipeline)]$Window)
+    process {
+        if (-not $Window.Visible) { return }
+        $c = [string]$Window.Class
+        $ps = [string]$Window.Process -in 'powershell', 'pwsh', 'powershell_ise'
+        if ($c -like 'HwndWrapper[[]*' -or $c -like 'WindowsForms10.*' -or ($c -eq '#32770' -and $ps)) { $Window }
+    }
+}
+
+# Lists the visible top-level windows of the current desktop. Run it in the interactive session: a service session has no windows.
+function Get-DesktopWindow {
+    if (-not ('LabHarness.Win' -as [type])) {
+        Add-Type -Namespace LabHarness -Name Win -MemberDefinition @'
+public delegate bool EnumProc(System.IntPtr h, System.IntPtr l);
+[System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc p, System.IntPtr l);
+[System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool IsWindowVisible(System.IntPtr h);
+[System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)] public static extern int GetClassName(System.IntPtr h, System.Text.StringBuilder s, int n);
+[System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)] public static extern int GetWindowText(System.IntPtr h, System.Text.StringBuilder s, int n);
+[System.Runtime.InteropServices.DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(System.IntPtr h, out uint pid);
+[System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool PostMessage(System.IntPtr h, uint m, System.IntPtr w, System.IntPtr l);
+'@
+    }
+    $list = New-Object System.Collections.Generic.List[object]
+    $cb = [LabHarness.Win+EnumProc] {
+        param($h, $l)
+        $cls = New-Object System.Text.StringBuilder 256
+        $ttl = New-Object System.Text.StringBuilder 512
+        [void][LabHarness.Win]::GetClassName($h, $cls, 256)
+        [void][LabHarness.Win]::GetWindowText($h, $ttl, 512)
+        $winPid = [uint32]0
+        [void][LabHarness.Win]::GetWindowThreadProcessId($h, [ref]$winPid)
+        $proc = Get-Process -Id ([int]$winPid) -ErrorAction SilentlyContinue
+        $list.Add([pscustomobject]@{ Handle = $h; ProcessId = [int]$winPid; Process = $(if ($proc) { $proc.ProcessName } else { '' }); Class = $cls.ToString(); Title = $ttl.ToString(); Visible = [LabHarness.Win]::IsWindowVisible($h) })
+        $true
+    }
+    [void][LabHarness.Win]::EnumWindows($cb, [IntPtr]::Zero)
+    $list.ToArray()
+}
+
+# The app windows on the desktop right now, except those of the given process ids.
+function Get-StrayAppWindow {
+    param([int[]]$ExcludeProcessId = @())
+    @(Get-DesktopWindow | Select-AppWindow | Where-Object { $ExcludeProcessId -notcontains $_.ProcessId })
+}
+
+# Asks windows to close (WM_CLOSE). A window of a process that is gone needs nothing.
+function Close-AppWindow {
+    param($Window)
+    foreach ($w in @($Window)) { if ($w) { [void][LabHarness.Win]::PostMessage($w.Handle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) } }
+}
+
+function Format-WindowList {
+    param($Window)
+    $w = @($Window | Where-Object { $_ })
+    if (-not $w.Count) { return 'none' }
+    ($w | ForEach-Object { '[pid {0} {1} {2} "{3}"]' -f $_.ProcessId, $_.Process, $_.Class, $_.Title }) -join ' '
+}
+
+# ---- Run snapshot: who, which desktop theme, which windows ----
+
+# The Windows theme of the interactive user (1 = light, 0 = dark). An app theme comes from the test; the Windows theme is the other
+# source of a dark dialog in a light run, so both ends of a run record it.
+function Get-LabThemeInfo {
+    $k = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+    $apps = (Get-ItemProperty -LiteralPath $k -Name AppsUseLightTheme -ErrorAction SilentlyContinue).AppsUseLightTheme
+    $sys = (Get-ItemProperty -LiteralPath $k -Name SystemUsesLightTheme -ErrorAction SilentlyContinue).SystemUsesLightTheme
+    [pscustomobject]@{ AppsUseLightTheme = $apps; SystemUsesLightTheme = $sys }
+}
+
+function Format-RunSnapshot {
+    param([string]$Phase, [string]$Run, [string]$User, [int]$SessionId, $Theme, $Window)
+    'HARNESS {0}: {1} run={2} user={3} session={4} AppsUseLightTheme={5} SystemUsesLightTheme={6} windows={7}' -f
+    $Phase, (Get-Date -Format 's'), $Run, $User, $SessionId, $Theme.AppsUseLightTheme, $Theme.SystemUsesLightTheme, (Format-WindowList -Window $Window)
+}
+
+# Appends the snapshot line to the run output. Returns the line.
+function Write-RunSnapshot {
+    param([string]$Phase, [string]$Run, [string]$Path)
+    $line = Format-RunSnapshot -Phase $Phase -Run $Run -User ([Environment]::UserName) -SessionId ([Diagnostics.Process]::GetCurrentProcess().SessionId) -Theme (Get-LabThemeInfo) -Window (Get-StrayAppWindow)
+    Add-Content -LiteralPath $Path -Value $line -Encoding Ascii
+    $line
+}
+
+# The preflight of a run, inside the interactive session: no app window of another process may be open. With -Close the windows get
+# a close request first and are checked again. Returns the windows that remain (the run must not start when any remain).
+function Test-DesktopClean {
+    param([switch]$Close, [int[]]$ExcludeProcessId = @($PID), [int]$WaitSeconds = 3)
+    $stray = @(Get-StrayAppWindow -ExcludeProcessId $ExcludeProcessId)
+    if ($stray.Count -and $Close) { Close-AppWindow -Window $stray; Start-Sleep -Seconds $WaitSeconds; $stray = @(Get-StrayAppWindow -ExcludeProcessId $ExcludeProcessId) }
+    $stray
+}
