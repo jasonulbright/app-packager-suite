@@ -1205,6 +1205,277 @@ function Start-SuiteSiteWatch {
 }
 #endregion
 
+#region Handoff files (H-1)
+# One small file per handoff kind in sites\<SITE>\handoff\<kind>.json. One producer writes it, one consumer reads it.
+# See docs\reference\handoff-contract.md. The header fields (Producer, CreatedUtc, Site and the schema version and kind)
+# let a consumer show the source and the age of the data and refuse a file that it does not know.
+
+$script:SuiteHandoffForbiddenNames = 'token|secret|password|apikey|credential|webhook'
+
+function Get-SuiteHandoffPath {
+    <#
+    .SYNOPSIS
+        Returns the path of the handoff file of a kind for a site: <site folder>\handoff\<kind>.json. Creates nothing.
+    .PARAMETER SiteCode
+        The site folder name (AB1 or AB1~2).
+    .PARAMETER Kind
+        The handoff kind, lower case letters, digits and hyphens, for example ring-plan.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][string]$SiteCode,
+        [Parameter(Mandatory)][string]$Kind,
+        [string]$DataRoot
+    )
+    if (-not (Test-SuiteSitePathSegment -Value $Kind)) { throw "Invalid handoff kind: '$Kind'." }
+    $args2 = @{ SiteCode = $SiteCode; Area = 'handoff' }
+    if ($DataRoot) { $args2['DataRoot'] = $DataRoot }
+    return (Join-Path (Get-SuiteSiteFolder @args2) ($Kind + '.json'))
+}
+
+function Find-SuiteHandoffForbiddenName {
+    # Returns the first property name in a parsed JSON tree that names a secret, else $null.
+    param($Node, [int]$Depth = 0)
+    if ($null -eq $Node -or $Depth -gt 12) { return $null }
+    if ($Node -is [string] -or $Node -is [ValueType]) { return $null }
+    if ($Node -is [System.Collections.IEnumerable]) {
+        foreach ($item in $Node) {
+            $hit = Find-SuiteHandoffForbiddenName -Node $item -Depth ($Depth + 1)
+            if ($hit) { return $hit }
+        }
+        return $null
+    }
+    foreach ($p in $Node.PSObject.Properties) {
+        if ($p.Name -match $script:SuiteHandoffForbiddenNames) { return $p.Name }
+        $hit = Find-SuiteHandoffForbiddenName -Node $p.Value -Depth ($Depth + 1)
+        if ($hit) { return $hit }
+    }
+    return $null
+}
+
+function Write-SuiteHandoff {
+    <#
+    .SYNOPSIS
+        Writes the JSON text of a handoff file for a site, through a temp file and a swap. Returns Ok, Path and Message. Never throws.
+    .DESCRIPTION
+        The text must be a JSON object. The writer refuses text that has a property whose name holds token, secret, password,
+        apikey, credential or webhook. The file is UTF-8 with no byte order mark. The previous file stays whole when the
+        write fails. The file is overwritten at each run: one file per kind, no history.
+    #>
+    [CmdletBinding()]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification='Writes one handoff file through a temp file; the caller names the file.')]
+    param(
+        [Parameter(Mandatory)][string]$SiteCode,
+        [Parameter(Mandatory)][string]$Kind,
+        [Parameter(Mandatory)][string]$Json,
+        [string]$DataRoot
+    )
+    $result = [pscustomobject]@{ Ok = $false; Path = ''; Message = '' }
+    $temp = $null
+    try {
+        $path = Get-SuiteHandoffPath -SiteCode $SiteCode -Kind $Kind -DataRoot $DataRoot
+        $result.Path = $path
+        $parsed = $Json | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $parsed -or $parsed -is [System.Array] -or $parsed -is [string] -or $parsed -is [ValueType]) { $result.Message = 'The handoff text is not a JSON object.'; return $result }
+        $bad = Find-SuiteHandoffForbiddenName -Node $parsed
+        if ($bad) { $result.Message = "The handoff text has the property '$bad', which may hold a secret. Nothing was written."; return $result }
+        $dir = Split-Path -Path $path -Parent
+        if (-not (Test-Path -LiteralPath $dir)) { [void](New-Item -ItemType Directory -Path $dir -Force -ErrorAction Stop) }
+        $temp = '{0}.{1}.tmp' -f $path, [guid]::NewGuid().ToString('N')
+        [IO.File]::WriteAllBytes($temp, (New-Object System.Text.UTF8Encoding($false)).GetBytes($Json))
+        if (Test-Path -LiteralPath $path -PathType Leaf) { [IO.File]::Replace($temp, $path, [NullString]::Value) }
+        else { [IO.File]::Move($temp, $path) }
+        $temp = $null
+        $result.Ok = $true
+        $result.Message = 'Written.'
+    }
+    catch { $result.Message = $_.Exception.Message }
+    finally { if ($temp -and (Test-Path -LiteralPath $temp)) { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue } }
+    return $result
+}
+
+function ConvertTo-SuiteStaleHours {
+    <#
+    .SYNOPSIS
+        Turns the stale limit of the user (a number and the unit hours or days) into hours. A value that is not valid gives the default (72 hours).
+    #>
+    [CmdletBinding()]
+    [OutputType([double])]
+    param($Value, [string]$Unit = 'days', [double]$Default = 72)
+    $n = 0
+    if (-not [int]::TryParse(([string]$Value).Trim(), [ref]$n)) { return $Default }
+    if ($n -lt 1 -or $n -gt 9999) { return $Default }
+    switch (([string]$Unit).Trim().ToLowerInvariant()) {
+        'hours' { return [double]$n }
+        'days'  { return [double]($n * 24) }
+        default { return $Default }
+    }
+}
+
+function Format-SuiteAge {
+    <#
+    .SYNOPSIS
+        Returns the age as text: "under 1 minute old", "5 minutes old", "3 hours old", "2 days old". A negative age gives "dated in the future".
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([Parameter(Mandatory)][timespan]$Age)
+    if ($Age.TotalSeconds -lt -60) { return 'dated in the future' }
+    $minutes = [math]::Floor($Age.TotalMinutes)
+    if ($minutes -lt 1) { return 'under 1 minute old' }
+    if ($minutes -lt 60) { return ('{0} minute{1} old' -f $minutes, $(if ($minutes -eq 1) { '' } else { 's' })) }
+    $hours = [math]::Floor($Age.TotalHours)
+    if ($hours -lt 48) { return ('{0} hour{1} old' -f $hours, $(if ($hours -eq 1) { '' } else { 's' })) }
+    $days = [math]::Floor($Age.TotalDays)
+    return ('{0} days old' -f $days)
+}
+
+function Get-SuiteDataAge {
+    <#
+    .SYNOPSIS
+        Returns the age of data created at a UTC time: Age, AgeText, IsStale (older than the limit, or dated in the future) and IsFuture.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][datetime]$CreatedUtc,
+        [double]$StaleAfterHours = 72,
+        [datetime]$NowUtc
+    )
+    if (-not $PSBoundParameters.ContainsKey('NowUtc')) { $NowUtc = [datetime]::UtcNow }
+    $age = $NowUtc.ToUniversalTime() - $CreatedUtc.ToUniversalTime()
+    $future = $age.TotalSeconds -lt -60
+    return [pscustomobject]@{
+        Age      = $age
+        AgeText  = (Format-SuiteAge -Age $age)
+        IsStale  = ($future -or $age.TotalHours -gt $StaleAfterHours)
+        IsFuture = $future
+    }
+}
+
+function ConvertFrom-SuiteHandoffJson {
+    # Parses JSON text. PowerShell 7 turns an ISO date string into a [datetime]. -DateKind String (7.5 and later) keeps the text.
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Text)
+    if ($null -eq $script:SuiteJsonHasDateKind) { $script:SuiteJsonHasDateKind = [bool](Get-Command ConvertFrom-Json).Parameters.ContainsKey('DateKind') }
+    if ($script:SuiteJsonHasDateKind) { return ($Text | ConvertFrom-Json -DateKind String -ErrorAction Stop) }
+    return ($Text | ConvertFrom-Json -ErrorAction Stop)
+}
+
+function ConvertFrom-SuiteUtcText {
+    # Parses yyyy-MM-ddTHH:mm:ssZ. Returns a UTC [datetime] or $null. A [datetime] value (PowerShell 7 parsed it) counts when its kind is known.
+    param($Value)
+    if ($Value -is [datetime]) {
+        if ($Value.Kind -eq [DateTimeKind]::Unspecified) { return $null }
+        return $Value.ToUniversalTime()
+    }
+    $Text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+    $d = [datetime]::MinValue
+    $styles = [Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal
+    if ([datetime]::TryParseExact($Text.Trim(), "yyyy-MM-dd'T'HH:mm:ss'Z'", [Globalization.CultureInfo]::InvariantCulture, $styles, [ref]$d)) { return $d }
+    return $null
+}
+
+function Read-SuiteHandoff {
+    <#
+    .SYNOPSIS
+        Reads and checks a handoff file. Returns the header fields, the age and the parsed data. Never throws.
+    .DESCRIPTION
+        Status is Ok, Missing, Unreadable, Malformed, WrongKind, TooNew or NoDate. Only Ok carries Data. A file with a
+        schema version above -KnownSchemaVersion is refused (TooNew) and the message names the file and both versions.
+        A file with no valid CreatedUtc is refused (NoDate): its age is not known, so it is not trusted.
+        A stale file is flagged (IsStale) and not refused. A file for another site than -ActiveSite is flagged (SiteMismatch).
+        The header is read by name without regard to case: schemaVersion or SchemaVersion, kind or Format, producer or Producer
+        (name, version), createdUtc or CreatedUtc, and site.siteCode, Site.SiteCode or UpdatePlanner.SiteCode.
+    .PARAMETER ExpectedKind
+        The kind or format text that the file must carry, for example SuiteRingPlan.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [string]$ExpectedKind,
+        [int]$KnownSchemaVersion = 1,
+        [double]$StaleAfterHours = 72,
+        [string]$ActiveSite,
+        [datetime]$NowUtc
+    )
+    if (-not $PSBoundParameters.ContainsKey('NowUtc')) { $NowUtc = [datetime]::UtcNow }
+    $r = [pscustomobject]@{
+        Status = 'Missing'; Message = ''; Path = $Path; FileName = (Split-Path -Path $Path -Leaf)
+        Kind = ''; SchemaVersion = 0; ProducerName = ''; ProducerVersion = ''; SiteCode = ''
+        CreatedUtc = $null; Age = $null; AgeText = ''; IsStale = $false; SiteMismatch = $false; Data = $null
+    }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { $r.Message = ('The file {0} does not exist.' -f $r.FileName); return $r }
+    try { $raw = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8) }
+    catch { $r.Status = 'Unreadable'; $r.Message = ('The file {0} could not be read.' -f $r.FileName); return $r }
+    try { $data = ConvertFrom-SuiteHandoffJson -Text $raw }
+    catch { $r.Status = 'Malformed'; $r.Message = ('The file {0} is not valid JSON.' -f $r.FileName); return $r }
+    if ($null -eq $data -or $data -is [System.Array] -or $data -is [string] -or $data -is [ValueType]) {
+        $r.Status = 'Malformed'; $r.Message = ('The file {0} is not a JSON object.' -f $r.FileName); return $r
+    }
+    $kind = ''
+    foreach ($n in 'kind', 'Format') { $p = $data.PSObject.Properties[$n]; if ($p -and $p.Value) { $kind = [string]$p.Value; break } }
+    $r.Kind = $kind
+    $ver = 0
+    foreach ($n in 'schemaVersion', 'SchemaVersion') {
+        $p = $data.PSObject.Properties[$n]
+        if ($p -and $null -ne $p.Value) { [void][int]::TryParse(([string]$p.Value), [ref]$ver); break }
+    }
+    $r.SchemaVersion = $ver
+    $prod = $null
+    foreach ($n in 'producer', 'Producer') { $p = $data.PSObject.Properties[$n]; if ($p -and $p.Value) { $prod = $p.Value; break } }
+    if ($prod) {
+        $pn = $prod.PSObject.Properties['name']; if ($pn) { $r.ProducerName = [string]$pn.Value }
+        $pv = $prod.PSObject.Properties['version']; if ($pv) { $r.ProducerVersion = [string]$pv.Value }
+    }
+    $siteCode = ''
+    foreach ($pair in @(@('site', 'siteCode'), @('Site', 'SiteCode'), @('UpdatePlanner', 'SiteCode'))) {
+        $holder = $data.PSObject.Properties[$pair[0]]
+        if ($holder -and $holder.Value) { $sp = $holder.Value.PSObject.Properties[$pair[1]]; if ($sp -and $sp.Value) { $siteCode = ([string]$sp.Value).ToUpperInvariant(); break } }
+    }
+    $r.SiteCode = $siteCode
+    if ($ExpectedKind -and $kind -ne $ExpectedKind) {
+        $r.Status = 'WrongKind'
+        $r.Message = ('The file {0} has the kind ''{1}'' and not ''{2}''.' -f $r.FileName, $kind, $ExpectedKind)
+        return $r
+    }
+    if ($ver -gt $KnownSchemaVersion) {
+        $r.Status = 'TooNew'
+        $r.Message = ('The file {0} has schema version {1}. This tool knows version {2}. Update this tool to read it.' -f $r.FileName, $ver, $KnownSchemaVersion)
+        return $r
+    }
+    if ($ver -lt 1) {
+        $r.Status = 'Malformed'
+        $r.Message = ('The file {0} has no schema version.' -f $r.FileName)
+        return $r
+    }
+    $created = $null
+    foreach ($n in 'createdUtc', 'CreatedUtc') {
+        $p = $data.PSObject.Properties[$n]
+        if ($p -and $p.Value) { $created = ConvertFrom-SuiteUtcText -Value $p.Value; break }
+    }
+    if ($null -eq $created) {
+        $r.Status = 'NoDate'
+        $r.Message = ('The file {0} has no valid creation time, so its age is not known.' -f $r.FileName)
+        return $r
+    }
+    $age = Get-SuiteDataAge -CreatedUtc $created -StaleAfterHours $StaleAfterHours -NowUtc $NowUtc
+    $r.CreatedUtc = $created
+    $r.Age = $age.Age
+    $r.AgeText = $age.AgeText
+    $r.IsStale = $age.IsStale
+    if ($ActiveSite -and $siteCode) {
+        $parsedActive = ConvertFrom-SuiteSiteFolderName -Name $ActiveSite
+        $activeCode = if ($parsedActive) { $parsedActive.SiteCode } else { $ActiveSite.ToUpperInvariant() }
+        $r.SiteMismatch = ($activeCode -ne $siteCode)
+    }
+    $r.Status = 'Ok'
+    $r.Message = 'Ok'
+    $r.Data = $data
+    return $r
+}
+#endregion
+
 function Get-SuiteCommonVersion {
     <#
     .SYNOPSIS
