@@ -57,7 +57,7 @@ Statuses of `Read-SuiteHandoff`: `Ok`, `Missing`, `Unreadable`, `Malformed`, `Wr
 
 | Kind | File | Producer | Consumer |
 |---|---|---|---|
-| `SuiteRingPlan` | `handoff\ring-plan.json` | Update Planner (the **Send to Deployment Helper** button) | Deployment Helper (Rings view) |
+| `SuiteRingPlan` | `handoff\ring-plan.json` | Update Planner (the **Send Plan** button) | Deployment Helper (Rings view) |
 
 The Check ConfigMgr result is not a handoff file. It stays `results\CheckConfigMgrResult.csv` and `.json` of the site (version 0, no header). Deployment Helper shows the source, the site and the age of the rows from the `Source` and `CheckedAtUtc` columns of the file.
 
