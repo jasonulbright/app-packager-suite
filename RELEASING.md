@@ -105,3 +105,26 @@ gh release delete v<version> -R jasonulbright/app-packager-suite --yes
 git push origin :refs/tags/v<version>
 git tag -d v<version>
 ```
+
+## 6. Drift guard: a component release without a suite release
+
+A component release that no suite release follows ships an old tool in the installer. `tools/Test-SuiteDrift.ps1` finds it. It is read only: it uses `gh` and the GitHub API and changes nothing.
+
+```powershell
+.	ools\Test-SuiteDrift.ps1
+```
+
+Run it before a suite release (the BEHIND rows are what the release must carry) and after it (every row must be OK). It lists each component, its latest release tag, the version the latest published suite release carries, where that version was read, and the status.
+
+| Status | Meaning | Result |
+|---|---|---|
+| OK | The suite carries the latest component release. | none |
+| BEHIND | The latest component release is newer than the carried version. | Warning. Failure when the component release is more than 72 hours old (`-GraceHours`). |
+| AHEAD | The suite carries a newer version than the latest release. A release was retracted or replaced. | Warning. Check by hand. |
+| UNKNOWN | No carried version could be read. | Warning. |
+
+The carried version comes from the `suite-manifest.json` asset of the suite release (published since the release after 2026.11.22.0110), or, for an earlier release, from the `Carry <component> <version>` lines in the release notes. Write those lines for every component a suite release refreshes, as the changelog shape in section 2 requires.
+
+Exit codes: 0 no failure, 1 a component is BEHIND past the grace period, 2 GitHub could not be read.
+
+The workflow `.github/workflows/suite-drift.yml` runs the same script every day at 06:17 UTC and on demand (`gh workflow run suite-drift.yml -R jasonulbright/app-packager-suite`). A failed run is the signal that a component release waited more than 72 hours for its suite release. Fix it by running sections 1 to 4.

@@ -629,6 +629,8 @@ try {
     $payloadFiles = @(Get-ChildItem -LiteralPath $StageRoot -Recurse -File).Count
 
     New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
+    # Published beside the installer so tools/Test-SuiteDrift.ps1 can read the carried versions.
+    Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $OutDir 'suite-manifest.json') -Force
     $outFile = Join-Path $OutDir ('SuiteSetup-' + $SuiteVersion + '.exe')
     if (Test-Path -LiteralPath $outFile) { Remove-Item -LiteralPath $outFile -Force }
 

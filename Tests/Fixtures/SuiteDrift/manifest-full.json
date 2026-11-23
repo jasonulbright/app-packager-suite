@@ -1,0 +1,10 @@
+{
+  "suite": "AppPackager Suite",
+  "version": "2026.11.22.0110",
+  "built": "2026-11-22T20:00:00",
+  "components": [
+    { "name": "app-packager", "version": "2026.11.22.0161" },
+    { "name": "update-planner", "version": "2026.11.22.0016" },
+    { "name": "deployment-helper", "version": "2026.11.22.0031" }
+  ]
+}

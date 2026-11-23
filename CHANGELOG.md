@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Internal
+
+- Add the suite drift guard (H-4): `tools/Test-SuiteDrift.ps1` and a daily workflow report a component release that no suite release carries. The release now publishes `suite-manifest.json` as an asset.
+
 ## [2026.11.22.0110] - 2026-11-22
 
 ## 12 components refreshed: each site keeps its own data
