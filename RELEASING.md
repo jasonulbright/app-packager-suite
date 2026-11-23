@@ -111,7 +111,7 @@ git tag -d v<version>
 A component release that no suite release follows ships an old tool in the installer. `tools/Test-SuiteDrift.ps1` finds it. It is read only: it uses `gh` and the GitHub API and changes nothing.
 
 ```powershell
-.	ools\Test-SuiteDrift.ps1
+.\tools\Test-SuiteDrift.ps1
 ```
 
 Run it before a suite release (the BEHIND rows are what the release must carry) and after it (every row must be OK). It lists each component, its latest release tag, the version the latest published suite release carries, where that version was read, and the status.
