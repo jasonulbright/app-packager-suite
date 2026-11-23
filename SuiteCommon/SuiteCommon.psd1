@@ -49,6 +49,14 @@
         'Invoke-SuiteSiteMigration'
         'Format-SuiteSiteMigrationReport'
 
+        # Handoff files
+        'Get-SuiteHandoffPath'
+        'Write-SuiteHandoff'
+        'Read-SuiteHandoff'
+        'ConvertTo-SuiteStaleHours'
+        'Format-SuiteAge'
+        'Get-SuiteDataAge'
+
         # Window chrome
         'Get-TitleBarDragHeight'
         'Get-InputAncestors'
