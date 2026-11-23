@@ -60,10 +60,11 @@ function Stop-LedgerProcess {
     }
     foreach ($e in $entries) {
         $p = Get-Process -Id $e.Id -ErrorAction SilentlyContinue
-        if (-not $p -or $p.Id -eq $PID -or $p.StartTime.Ticks -ne $e.Ticks) { continue }
+        # A live process with this id and another start time is a different process: touch neither it nor anything below it.
+        if ($p -and ($p.Id -eq $PID -or $p.StartTime.Ticks -ne $e.Ticks)) { continue }
+        # The root may be gone while its children still run (a killed wrapper): the children are found by ParentProcessId and start time.
         Stop-Below $e.Id (New-Object DateTime $e.Ticks)
-        Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
-        $done.Add(('pid {0}: {1}' -f $e.Id, $p.ProcessName))
+        if ($p) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue; $done.Add(('pid {0}: {1}' -f $e.Id, $p.ProcessName)) }
     }
     $done
 }

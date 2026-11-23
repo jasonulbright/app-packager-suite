@@ -116,7 +116,7 @@ Describe 'Run-VisibleProbe lock format' {
 }
 Describe 'Run-VisibleProbe hardening (Q-118)' {
     It 'creates the lock file with its text in one step, so a waiting run never reads an empty lock' {
-        $script:Text | Should -Match 'New-Item -ItemType File -Path \$path -Value \$token'
+        $script:Text | Should -Match '\[IO\.File\]::Move\(\$tmp, \$path\)'
     }
 
     It 'writes who holds the lock to the output of a waiting run' {

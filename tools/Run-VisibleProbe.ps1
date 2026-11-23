@@ -103,8 +103,11 @@ try {
         $got = Invoke-Command $s {
             param($path, $token)
             New-Item -ItemType Directory -Force (Split-Path $path) | Out-Null
-            try { New-Item -ItemType File -Path $path -Value $token -ErrorAction Stop | Out-Null; 'taken' }
+            # The text is written to a temp file and the file is moved to the lock name: the move fails when the lock exists and the lock never shows empty.
+            $tmp = $path + '.' + [guid]::NewGuid().ToString('N') + '.tmp'
+            try { [IO.File]::WriteAllText($tmp, $token); [IO.File]::Move($tmp, $path); 'taken' }
             catch {
+                Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
                 $item = Get-Item -LiteralPath $path -ErrorAction SilentlyContinue
                 $text = ((Get-Content -LiteralPath $path -ErrorAction SilentlyContinue) -join ' ').Trim()
                 if ($item) {
