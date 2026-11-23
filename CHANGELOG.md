@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [2026.11.22.0110] - 2026-11-22
+
+## 12 components refreshed: each site keeps its own data
+
+### Installer
+
+- Show the active site in the launcher and let you change it. A tool that is already open keeps its site until you restart it.
+- Keep each tool's site settings, reports and run files per site in the data folder. The first start copies the old files and keeps them.
+- Carry app-packager 2026.11.22.0161.
+- Carry site-hygiene 2026.11.22.0043, deployment-helper 2026.11.22.0031 and collection-manager 2026.11.22.0035.
+- Carry collection-and-compliance-manager 2026.11.22.0032, update-planner 2026.11.22.0016 and device-inspector 2026.11.22.0020.
+- Carry maintenance-window-manager 2026.11.22.0027, pivots-and-scripts 2026.11.22.0020 and dp-content-manager 2026.11.22.0027.
+- Carry detection-tester 2026.11.22.0027 and installer-analysis 2026.11.22.0033 with no per-site data.
+
+### Internal
+
+- Add `Resolve-SuiteToolSite`, `Read-SuiteToolPrefs`, `Save-SuiteToolPrefs`, `Resolve-SuiteToolPath` and the launcher site box (Q-112f).
+
 ## [2026.11.22.0109] - 2026-11-22
 
 ## 5 components refreshed
