@@ -1,0 +1,37 @@
+name: Suite drift guard
+
+# Read-only guard H-4. Lists each component's latest release and the version the
+# latest published suite release carries. A component behind the suite is a
+# warning; behind for more than the grace period (72 hours) fails the run, which
+# GitHub reports by email. It releases nothing and changes nothing.
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      grace_hours:
+        description: 'Hours a component release may wait for a suite release before the run fails'
+        required: false
+        default: '72'
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Compare component releases with the latest suite release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GRACE_HOURS: ${{ github.event.inputs.grace_hours || '72' }}
+        run: |
+          ./tools/Test-SuiteDrift.ps1 -GraceHours ([int]$env:GRACE_HOURS) | Tee-Object -Variable out
+          $out | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+          exit $LASTEXITCODE

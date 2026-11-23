@@ -236,6 +236,7 @@ jobs:
           git -C app-packager-suite archive --format=zip $env:RELEASE_TAG -o "$PWD/release/AppPackagerSuite-$version.zip" -- . ':(exclude)Tests' ':(exclude)*.Tests.ps1' ':(exclude).github' ':(exclude)RELEASING.md'
           if ($LASTEXITCODE -ne 0) { throw 'git archive failed' }
           Copy-Item "app-packager-suite/installer/out/SuiteSetup-$env:SUITE_VERSION.exe" release/
+          Copy-Item "app-packager-suite/installer/out/suite-manifest.json" release/
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
