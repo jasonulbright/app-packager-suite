@@ -2,8 +2,20 @@
 
 ## [Unreleased]
 
+## [2026.11.23.0111] - 2026-11-23
+
+## 2 components refreshed: send the plan from Update Planner to Deployment Helper
+
+### Installer
+
+- Send the plan from Update Planner to Deployment Helper with one button. No file copy by hand.
+- Show the source and age of the plan and the Check Results in Deployment Helper, and mark old data as stale.
+- Carry deployment-helper 2026.11.23.0032 and update-planner 2026.11.23.0017.
+- The other ten components are unchanged.
+
 ### Internal
 
+- Add the handoff routines to SuiteCommon and the handoff contract (H-1).
 - Add the suite drift guard (H-4): `tools/Test-SuiteDrift.ps1` and a daily workflow report a component release that no suite release carries. The release now publishes `suite-manifest.json` as an asset.
 
 ## [2026.11.22.0110] - 2026-11-22
