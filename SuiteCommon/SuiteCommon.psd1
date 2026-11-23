@@ -56,6 +56,7 @@
         'ConvertTo-SuiteStaleHours'
         'Format-SuiteAge'
         'Get-SuiteDataAge'
+        'ConvertFrom-SuiteUtcText'
 
         # Window chrome
         'Get-TitleBarDragHeight'
