@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [2026.11.23.0112] - 2026-11-23
+
+## 1 component refreshed: device wording in the PowerShell app
+
+### Installer
+
+- Carry app-packager 2026.11.23.0162: the WSUS certificate text, the script signing text and the Decline tooltip say devices, not clients.
+- Make the CLIENT01 window runs safer: one run at a time, cleanup before the lock is released (suite-only change).
+- The other eleven components are unchanged.
+
 ## [2026.11.23.0111] - 2026-11-23
 
 ## 2 components refreshed: send the plan from Update Planner to Deployment Helper
