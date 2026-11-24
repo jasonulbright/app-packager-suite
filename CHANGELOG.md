@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [2026.11.24.0115] - 2026-11-24
+
+## 1 component refreshed: grid icons stay with their rows
+
+### Installer
+
+- Carry app-packager 2026.11.24.0165: each application keeps its own icon when the grid scrolls and sorts.
+- The other twelve components are unchanged.
+
 ## [2026.11.24.0114] - 2026-11-24
 
 ## 1 component refreshed: Architecture column and the whole One Click chain
