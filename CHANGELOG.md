@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [2026.11.24.0113] - 2026-11-24
+
+## 3 components refreshed: Cancel for dropped installers, Title Case headers, validation wording
+
+### Installer
+
+- Carry app-packager 2026.11.24.0163: Cancel stops the analysis of dropped installers.
+- Carry detection-tester 2026.11.23.0028: the Installed Applications headers read Display Name and Display Version.
+- Carry collection-manager 2026.11.24.0036: the About text says that validation runs on the site.
+- The other ten components are unchanged.
+
 ## [2026.11.23.0112] - 2026-11-23
 
 ## 1 component refreshed: device wording in the PowerShell app
