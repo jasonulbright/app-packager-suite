@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [2026.11.24.0114] - 2026-11-24
+
+## 1 component refreshed: Architecture column and the whole One Click chain
+
+### Installer
+
+- Carry app-packager 2026.11.24.0164: the grid column reads Architecture and One Click runs every check first.
+- The other twelve components are unchanged.
+
 ## [2026.11.24.0113] - 2026-11-24
 
 ## 3 components refreshed: Cancel for dropped installers, Title Case headers, validation wording
