@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [2026.11.24.0117] - 2026-11-24
+
+## 1 component refreshed: ConfigMgr names restored
+
+### Installer
+
+- Carry app-packager 2026.11.24.0167: PuTTY and Intune Debug Toolkit keep the ConfigMgr names of release 0165.
+- The other twelve components are unchanged.
+
+
 ## [2026.11.24.0116] - 2026-11-24
 
 ## 1 component refreshed: ConfigMgr names of PuTTY and Intune Debug Toolkit
