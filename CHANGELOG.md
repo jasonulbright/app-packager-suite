@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [2026.11.24.0116] - 2026-11-24
+
+## 1 component refreshed: ConfigMgr names of PuTTY and Intune Debug Toolkit
+
+### Installer
+
+- Carry app-packager 2026.11.24.0166: PuTTY and Intune Debug Toolkit are found by their installer names.
+- The other twelve components are unchanged.
+
+
 ## [2026.11.24.0115] - 2026-11-24
 
 ## 1 component refreshed: grid icons stay with their rows
