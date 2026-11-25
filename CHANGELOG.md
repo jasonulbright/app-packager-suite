@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [2026.11.25.0119] - 2026-11-25
+
+## 1 component refreshed: Discover all supported software
+
+### Installer
+
+- Carry app-packager 2026.11.25.0169: Discover All Supported Software lists every supported app that devices have installed.
+- The other twelve components are unchanged.
+
 ## [2026.11.24.0118] - 2026-11-24
 
 ## 1 component refreshed: Check ConfigMgr finds what installers name
