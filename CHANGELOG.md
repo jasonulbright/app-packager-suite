@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [2026.11.24.0118] - 2026-11-24
+
+## 1 component refreshed: Check ConfigMgr finds what installers name
+
+### Installer
+
+- Carry app-packager 2026.11.24.0168: Check ConfigMgr finds PuTTY, Azure PowerShell and Intune Debug Toolkit.
+- The other twelve components are unchanged.
+
+
 ## [2026.11.24.0117] - 2026-11-24
 
 ## 1 component refreshed: ConfigMgr names restored
