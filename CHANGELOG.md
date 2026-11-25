@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [2026.11.25.0120] - 2026-11-25
+
+## 1 component refreshed: no icon flicker while checking
+
+### Installer
+
+- Carry app-packager 2026.11.25.0170: the grid icons stay still while Check Latest and the other actions update each row.
+- The other twelve components are unchanged.
+
 ## [2026.11.25.0119] - 2026-11-25
 
 ## 1 component refreshed: Discover all supported software
