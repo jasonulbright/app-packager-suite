@@ -41,7 +41,7 @@ Describe 'The tools stop only their own processes' {
     }
 
     It 'never stops a process with Stop-Process: a stop uses a held process object or the job of the run' {
-        Get-Hits '(?i)\bStop-Process\b|\bspps\b|\bwmic\b|Invoke-(Cim|Wmi)Method|CloseMainWindow|(ForEach-Object|\bforeach\b|%)\s+(-MemberName\s+)?["]?Kill\b' | Should -BeNullOrEmpty
+        Get-Hits '(?i)\bStop-Process\b|\bspps\b|\bwmic\b|Invoke-(Cim|Wmi)Method|CloseMainWindow|(ForEach-Object|\bforeach\b|%)\s+(-MemberName\s+)?["'']?Kill\b' | Should -BeNullOrEmpty
     }
 
     It 'calls Kill only at the two known places: the ledger stop and the launcher capture stop of its own process' {
