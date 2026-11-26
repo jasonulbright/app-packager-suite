@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [2026.11.26.0122] - 2026-11-26
+
+## 1 component refreshed: Cancel stops only the processes of its run
+
+### Installer
+
+- Carry app-packager 2026.11.26.0171: Cancel holds each process until the stop ends.
+- Stop only the processes of a lab harness run, through a job object.
+- The other twelve components are unchanged.
+
 ## [2026.11.25.0121] - 2026-11-25
 
 ## 1 component refreshed: broken supersedence rules are removed
