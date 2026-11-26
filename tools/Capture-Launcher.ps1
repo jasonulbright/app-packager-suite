@@ -93,7 +93,8 @@ try {
     if ($Base64) { 'PNG64:' + [Convert]::ToBase64String([IO.File]::ReadAllBytes($OutFile)) }
 }
 finally {
-    if ($p -and -not $p.HasExited) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
+    # The process object holds the handle of its own start, so Kill reaches that process and no other.
+    if ($p -and -not $p.HasExited) { $p.Kill() }
     if ($hadSettings) { Set-Content -LiteralPath $settingsPath -Value $backup } else { Remove-Item $settingsPath -Force -ErrorAction SilentlyContinue }
     Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }

@@ -59,26 +59,31 @@ Describe 'Run-VisibleProbe lab lock' {
 }
 
 Describe 'Run-VisibleProbe remote watchdog' {
-    It 'starts a watchdog on the lab computer before the command runs, so a dead runner cannot leave a run unwatched' {
-        $watch = $script:Text.IndexOf('.watch.ps1')
-        $cmd = $script:Text.IndexOf('SUITE_ALLOW_WINDOW_TESTS')
-        $watch | Should -BeGreaterThan 0
-        $script:Text.Contains('-WrapPid') | Should -BeTrue
+    It 'starts the command through a launcher on the lab computer, so a dead runner cannot leave a run unwatched' {
+        $script:Text | Should -Match '-File `"\$d\\\.launch\.ps1`"'
+        $script:Text | Should -Match 'Wait-JobRun -Run \$run -Minutes \{MIN\} -QuietMinutes \{QUIET\}'
         $script:Text.Contains('remote watchdog') | Should -BeTrue
     }
 
-    It 'ends a run after the total time or after the quiet time, and writes the done flag' {
-        $script:Text.Contains('the run did not finish in $Minutes minutes') | Should -BeTrue
-        $script:Text.Contains('no output for $Quiet minutes') | Should -BeTrue
-        $script:Text.Contains("Set-Content -LiteralPath `"`$Dir\.done`"") | Should -BeTrue
+    It 'ends a run after the total time or after the quiet time, and writes the done flag after the job is closed' {
+        $script:Text.Contains('the run did not finish in {MIN} minutes') | Should -BeTrue
+        $script:Text.Contains('no output for {QUIET} minutes') | Should -BeTrue
+        $launch = $script:Text.IndexOf('$launchTemplate = @')
+        $stop = $script:Text.IndexOf('Stop-JobProcess -Run $run', $launch)
+        $done = $script:Text.IndexOf('Set-Content -LiteralPath "$d\.done"', $launch)
+        $stop | Should -BeGreaterThan $launch
+        $done | Should -BeGreaterThan $stop
+    }
+
+    It 'reports a run that the watchdog ended as a failure' {
+        $script:Text | Should -Match '\^FAIL: \(preflight\|remote watchdog\)'
     }
 }
 
-Describe 'Run-VisibleProbe stray check and the watchdog' {
-    It 'does not count its own watchdog process as a stray process' {
-        # The watchdog is recorded in the ledger of the run, and the stray check skips every process of the ledger.
-        $script:Text | Should -Match 'Select-Object -Skip 1'
-        $script:Text | Should -Match 'w\.Id, .{1,2}w\.StartTime\.Ticks'
+Describe 'Run-VisibleProbe stray check' {
+    It 'takes the stray list from the job of the run, so the launcher itself is never counted' {
+        $script:Text | Should -Match '\$result\.Stray'
+        $script:Text.Contains('$d\.stray') | Should -BeTrue
     }
 }
 
@@ -146,13 +151,13 @@ Describe 'Run-VisibleProbe hardening (Q-118)' {
         $script:Text | Should -Match 'Close-AppWindow'
     }
 
-    It 'ends the run by ledger in the finally block before it releases the lock, and cleans up only a run that took the lock' {
+    It 'ends the run in the finally block before it releases the lock, and cleans up only a run that took the lock' {
         $fin = @($script:Ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.TryStatementAst] -and $n.Finally -and $n.Finally.Extent.Text -match 'Releasing the lab lock' }, $true))
         $fin.Count | Should -Be 1
         $t = $fin[0].Finally.Extent.Text
         $t | Should -Match 'if \(\$haveLock\)'
-        $t.IndexOf("'All'") | Should -BeGreaterThan 0
-        $t.IndexOf("'All'") | Should -BeLessThan $t.IndexOf('Releasing the lab lock')
+        $t.IndexOf('$endRun') | Should -BeGreaterThan 0
+        $t.IndexOf('$endRun') | Should -BeLessThan $t.IndexOf('Releasing the lab lock')
         $t.IndexOf('Stop-ScheduledTask') | Should -BeGreaterThan 0
         $t.IndexOf('Unregister-ScheduledTask') | Should -BeLessThan $t.IndexOf('Releasing the lab lock')
     }

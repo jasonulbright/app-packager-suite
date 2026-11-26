@@ -84,7 +84,7 @@ Describe 'Ledger' {
             ($out -join ' ') | Should -Match ('pid ' + $kill.Id)
             ($out -join ' ') | Should -Not -Match ('pid ' + $keep.Id)
         }
-        finally { foreach ($p in $keep, $kill) { if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } } }
+        finally { foreach ($p in $keep, $kill) { if (-not $p.HasExited) { $p.Kill() } } }
     }
 }
 
