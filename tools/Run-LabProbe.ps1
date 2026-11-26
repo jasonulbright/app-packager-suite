@@ -32,52 +32,31 @@ param(
 $ErrorActionPreference = 'Stop'
 . $CredentialScript
 $dest = 'C:\Temp\fc-' + (Split-Path $Worktree -Leaf)
-# Stops the processes of a run on the lab computer by the ledger of that run and by process id (vault: testing-policy, 'Process rules on a lab VM').
-# No process is stopped by a command-line pattern: another session may own a process that matches.
-$stopTree = @'
-param([string]$Dest, [string]$Mode)
-# Mode Stray: stop the descendants of the run that are not in the ledger. Mode All: stop the whole run (descendants, then the run itself).
-# The ledger $Dest\.pids holds one line per process of the run: process id|start ticks. The first line is the process that started the run.
-# A process is found only through the ledger and through ParentProcessId. Nothing is selected by a command line.
-$ledger = Join-Path $Dest '.pids'
-if (-not (Test-Path -LiteralPath $ledger)) { return }
-$entries = @(Get-Content -LiteralPath $ledger | ForEach-Object { $a = $_ -split '\|'; [pscustomobject]@{ Id = [int]$a[0]; Ticks = [long]$a[1] } })
-# A live process with this id but another start time is a different process (the id was reused): stop nothing.
-$live = Get-Process -Id $entries[0].Id -ErrorAction SilentlyContinue
-if ($live -and $live.StartTime.Ticks -ne $entries[0].Ticks) { return }
-function Stop-Below([int]$Id, [datetime]$Since, [int[]]$Skip) {
-    foreach ($c in @(Get-CimInstance Win32_Process -Filter ('ParentProcessId=' + $Id))) {
-        if ($c.CreationDate -lt $Since.AddSeconds(-2) -or $Skip -contains [int]$c.ProcessId) { continue }
-        Stop-Below ([int]$c.ProcessId) $c.CreationDate $Skip
-        Stop-Process -Id $c.ProcessId -Force -ErrorAction SilentlyContinue
-        'pid {0}: {1}' -f $c.ProcessId, $c.Name
-    }
-}
-$skip = if ($Mode -eq 'Stray') { @($entries | Select-Object -Skip 1 | ForEach-Object { $_.Id }) } else { @() }
-Stop-Below $entries[0].Id (New-Object DateTime $entries[0].Ticks) $skip
-if ($Mode -eq 'All') {
-    foreach ($e in $entries) {
-        $p = Get-Process -Id $e.Id -ErrorAction SilentlyContinue
-        if ($p -and $p.Id -ne $PID -and $p.StartTime.Ticks -eq $e.Ticks) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
-    }
-}
-'@
+# The command runs in a job object on the lab computer (tools\ProcessJob.ps1). The job ends what the command started and nothing else:
+# at the end of the run, at the time limit, and when the remote session ends. No process is found through a parent id, a name or a
+# command line.
+$jobText = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'ProcessJob.ps1') -Raw
 $s = New-PSSession -ComputerName $Target -Credential $LabCredential
 try {
     Invoke-Command $s { param($d) Set-Location C:\; if (Test-Path $d) { Remove-Item $d -Recurse -Force }; New-Item -ItemType Directory $d -Force | Out-Null } -ArgumentList $dest
     foreach ($i in Get-ChildItem -LiteralPath $Worktree -Force | Where-Object { $_.Name -ne '.git' }) { Copy-Item -LiteralPath $i.FullName -Destination "$dest\$($i.Name)" -ToSession $s -Recurse -Force }
     # -NonInteractive: a missing mandatory parameter fails the test instead of waiting for input.
-    $job = Invoke-Command $s { param($d, $a) Set-Content -LiteralPath (Join-Path $d '.pids') ('{0}|{1}' -f $PID, (Get-Process -Id $PID).StartTime.Ticks); Set-Location $d; $o = & powershell.exe -NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -Command $a 2>&1 | Out-String; $o; "EXIT=$LASTEXITCODE"; Set-Location C:\ } -ArgumentList $dest, $ProbeArgs -AsJob
-    if (Wait-Job $job -Timeout ($Minutes * 60)) {
+    $job = Invoke-Command $s {
+        param($lib, $d, $a, $m)
+        . ([scriptblock]::Create($lib))
+        Set-Location $d
+        # The log is next to the copy, not in it: a test that reads every file of the copy must not meet a file that is being written.
+        $log = $d + '.run.log'
+        try { Invoke-JobCommand -Command $a -LogFile $log -Minutes $m } finally { Set-Location C:\; Remove-Item -LiteralPath $log -Force -ErrorAction SilentlyContinue }
+    } -ArgumentList $jobText, $dest, $ProbeArgs, $Minutes -AsJob
+    # The lab computer ends the run at the limit. The extra minutes cover a lab computer that does not answer: stopping the remote
+    # pipeline then runs the finally block that closes the job.
+    if (Wait-Job $job -Timeout (($Minutes + 3) * 60)) {
         $out = Receive-Job $job
     }
     else {
-        # The run took longer than the limit: end only the processes below the job of this copy (by its ledger), report a failure.
-        # The session $s is busy with the job: use a second session for the stop.
-        $s2 = New-PSSession -ComputerName $Target -Credential $LabCredential
-        try { Invoke-Command $s2 { param($d) $null = & ([scriptblock]::Create($using:stopTree)) $d 'Stray' } -ArgumentList $dest } finally { Remove-PSSession $s2 }
         Stop-Job $job
-        $out = "FAIL: the run did not finish in $Minutes minutes and was ended.`nEXIT=1"
+        $out = "FAIL: the run did not answer in $($Minutes + 3) minutes and was ended.`nEXIT=1"
     }
     Remove-Job $job -Force
     if ($OutFile) { $out | Set-Content -LiteralPath $OutFile -Encoding Ascii } else { $out }

@@ -29,31 +29,41 @@ Describe 'The tools stop only their own processes' {
     }
 
     It 'never matches a process by its command line' {
-        Get-Hits 'CommandLine' | Should -BeNullOrEmpty
+        Get-Hits '[.]CommandLine([^A-Za-z]|$)' | Should -BeNullOrEmpty
     }
 
-    It 'stops a process only with Stop-Process -Id' {
-        Get-Hits 'Stop-Process(?!\s+-Id\b)' | Should -BeNullOrEmpty
+    It 'never walks parent ids: Windows uses process ids again, so a walk can reach a process that the run did not start' {
+        Get-Hits '(?i)ParentProcessId|ParentProcess\b|\.Parent\.Id' | Should -BeNullOrEmpty
     }
 
-    It 'never selects the processes to stop by name or by a filter' {
-        Get-Hits 'Get-Process\s+(?!-Id\b)[^\r\n]*Stop-Process' | Should -BeNullOrEmpty
-        Get-Hits 'Where-Object[^\r\n]*Stop-Process' | Should -BeNullOrEmpty
+    It 'never reads the process list of WMI' {
+        Get-Hits '(?i)Win32_Process' | Should -BeNullOrEmpty
     }
 
-    It 'reads Win32_Process only to find the children of a process by its id' {
-        $bad = @($script:Lines | Where-Object { $_.Text -match 'Win32_Process' -and $_.Text -notmatch 'ParentProcessId' } | ForEach-Object { $_.Where })
-        $bad | Should -BeNullOrEmpty
+    It 'never stops a process with Stop-Process: a stop uses a held process object or the job of the run' {
+        Get-Hits '(?i)\bStop-Process\b|\bspps\b|\bwmic\b|Invoke-(Cim|Wmi)Method|CloseMainWindow|ForEach-Object\s+(-MemberName\s+)?Kill\b' | Should -BeNullOrEmpty
+    }
+
+    It 'calls Kill only at the two known places: the ledger stop and the launcher capture stop of its own process' {
+        $calls = @($script:Lines | Where-Object { $_.Text -match '\.Kill\(' } | ForEach-Object { ($_.Where -split ':')[0] + ' ' + $_.Text.Trim() })
+        $calls.Count | Should -Be 2
+        $calls | Should -Contain 'LabHarness.Common.ps1 $p.Kill()'
+        $calls | Should -Contain 'Capture-Launcher.ps1 if ($p -and -not $p.HasExited) { $p.Kill() }'
     }
 }
 
-Describe 'The lab probes stop a run through its ledger' {
-    It 'keeps a ledger of process ids and stops by it' {
+Describe 'The lab probes stop a run through its job object' {
+    It 'starts every run through the job helper' {
         foreach ($name in 'Run-VisibleProbe.ps1', 'Run-LabProbe.ps1') {
-            $text = Get-Content -LiteralPath (Join-Path $script:ToolDir $name) -Raw
-            $text | Should -Match '\$stopTree = @'''
-            $text | Should -Match '\.pids'
-            $text | Should -Match 'Stop-Process -Id'
+            Get-Content -LiteralPath (Join-Path $script:ToolDir $name) -Raw | Should -Match 'ProcessJob\.ps1'
         }
+        Get-Content -LiteralPath (Join-Path $script:ToolDir 'Run-VisibleProbe.ps1') -Raw | Should -Match 'Start-JobProcess'
+        Get-Content -LiteralPath (Join-Path $script:ToolDir 'Run-LabProbe.ps1') -Raw | Should -Match 'Invoke-JobCommand'
+    }
+
+    It 'creates the process suspended and puts it into the job before it runs' {
+        $text = Get-Content -LiteralPath (Join-Path $script:ToolDir 'ProcessJob.ps1') -Raw
+        $text | Should -Match '0x4 \| 0x08000000'
+        $text.IndexOf('AssignProcessToJobObject(job, information.hProcess)') | Should -BeLessThan $text.IndexOf('ResumeThread(information.hThread)')
     }
 }

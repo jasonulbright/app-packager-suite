@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Shared logic of the CLIENT01 real-window harness (Q-118, D-16): lock decisions, ledger sweep, stray-window check, run snapshot.
+    Shared logic of the CLIENT01 real-window harness (Q-118, D-16): lock decisions, ledger stop, stray-window check, run snapshot.
 
 .DESCRIPTION
     Dot-sourced by tools\Run-VisibleProbe.ps1 on the dev PC (lock decisions) and copied to the lab computer, where the run wrapper
@@ -44,29 +44,46 @@ function Read-LedgerEntry {
     @(Get-Content -LiteralPath $Path | Where-Object { $_ -match '^\d+\|\d+$' } | ForEach-Object { $a = $_ -split '\|'; [pscustomobject]@{ Id = [int]$a[0]; Ticks = [long]$a[1] } })
 }
 
-# Stops the processes of one ledger by process id and start time, and their descendants (by ParentProcessId). A live process with the
-# id but another start time is a different process (the id was reused): it is not touched. Returns one text line per stopped process.
+# Stops the processes that one ledger names, and no other process. A process is stopped only when its id and its start time both match
+# the ledger line; the match and the stop use one open handle. Nothing is found through a parent id: Windows uses process ids again, so
+# an older, unrelated process can name the id of a recorded process as its parent. What a run starts ends with its job object
+# (tools\ProcessJob.ps1). Returns one text line per stopped process.
 function Stop-LedgerProcess {
     param([Parameter(Mandatory)][string]$Ledger)
-    $entries = @(Read-LedgerEntry -Path $Ledger)
-    $done = New-Object System.Collections.Generic.List[string]
-    function Stop-Below([int]$Id, [datetime]$Since) {
-        foreach ($c in @(Get-CimInstance Win32_Process -Filter ('ParentProcessId=' + $Id))) {
-            if ($c.CreationDate -lt $Since.AddSeconds(-2)) { continue }
-            Stop-Below ([int]$c.ProcessId) $c.CreationDate
-            Stop-Process -Id $c.ProcessId -Force -ErrorAction SilentlyContinue
-            $done.Add(('pid {0}: {1}' -f $c.ProcessId, $c.Name))
+    foreach ($e in @(Read-LedgerEntry -Path $Ledger)) {
+        $p = Get-Process -Id $e.Id -ErrorAction SilentlyContinue
+        if (-not $p -or $p.Id -eq $PID) { continue }
+        try {
+            # The handle is opened first: from here on the object names one process, also when the id is used again.
+            $null = $p.Handle
+            if ($p.StartTime.Ticks -ne $e.Ticks) { continue }
+            $name = $p.ProcessName
+            $p.Kill()
+            'pid {0}: {1}' -f $e.Id, $name
+        }
+        catch { Write-Verbose ('pid {0} was not stopped: {1}' -f $e.Id, $_.Exception.Message) }
+    }
+}
+
+# Ends the run of one run folder. The ledger <Dir>\.pids names the launcher, which owns the job of the run. The launcher is asked to
+# end the run (file <Dir>\.stop). A launcher that does not answer is stopped by its ledger line; its job then closes and Windows ends
+# the members. Returns one text line per process that this function stopped itself.
+function Stop-LabRun {
+    param([Parameter(Mandatory)][string]$Dir, [int]$WaitSeconds = 30)
+    $ledger = Join-Path $Dir '.pids'
+    $entries = @(Read-LedgerEntry -Path $ledger)
+    if (-not $entries.Count) { return }
+    $done = Join-Path $Dir '.done'
+    if (-not (Test-Path -LiteralPath $done)) {
+        Set-Content -LiteralPath (Join-Path $Dir '.stop') -Value 'stop' -Encoding Ascii
+        $until = (Get-Date).AddSeconds($WaitSeconds)
+        while (-not (Test-Path -LiteralPath $done) -and (Get-Date) -lt $until) {
+            $alive = @($entries | Where-Object { $p = Get-Process -Id $_.Id -ErrorAction SilentlyContinue; $p -and $p.StartTime.Ticks -eq $_.Ticks })
+            if (-not $alive.Count) { break }
+            Start-Sleep -Milliseconds 500
         }
     }
-    foreach ($e in $entries) {
-        $p = Get-Process -Id $e.Id -ErrorAction SilentlyContinue
-        # A live process with this id and another start time is a different process: touch neither it nor anything below it.
-        if ($p -and ($p.Id -eq $PID -or $p.StartTime.Ticks -ne $e.Ticks)) { continue }
-        # The root may be gone while its children still run (a killed wrapper): the children are found by ParentProcessId and start time.
-        Stop-Below $e.Id (New-Object DateTime $e.Ticks)
-        if ($p) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue; $done.Add(('pid {0}: {1}' -f $e.Id, $p.ProcessName)) }
-    }
-    $done
+    Stop-LedgerProcess -Ledger $ledger
 }
 
 # Finds every ledger that a run of the harness or of a guide capture left under the root: <root>\*\.pids and <root>\*\ui\run.pids.
