@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [2026.11.25.0121] - 2026-11-25
+
+## 1 component refreshed: broken supersedence rules are removed
+
+### Installer
+
+- Carry site-hygiene 2026.11.25.0044: SUP-01 removes broken rules, also on retired applications.
+- The other twelve components are unchanged.
+
 ## [2026.11.25.0120] - 2026-11-25
 
 ## 1 component refreshed: no icon flicker while checking
